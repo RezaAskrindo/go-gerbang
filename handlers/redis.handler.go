@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"sika_apigateway/config"
+	"go-gerbang/config"
 
 	"github.com/go-redis/redis/v8"
 )

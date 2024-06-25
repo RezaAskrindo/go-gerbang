@@ -2,11 +2,11 @@ package services
 
 import (
 	"errors"
-	"sika_apigateway/config"
-	"sika_apigateway/handlers"
-	"sika_apigateway/middleware"
-	"sika_apigateway/models"
-	"sika_apigateway/types"
+	"go-gerbang/config"
+	"go-gerbang/handlers"
+	"go-gerbang/middleware"
+	"go-gerbang/models"
+	"go-gerbang/types"
 	"strconv"
 	"time"
 

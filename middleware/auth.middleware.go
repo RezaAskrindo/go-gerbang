@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"sika_apigateway/config"
-	"sika_apigateway/handlers"
-	"sika_apigateway/models"
+	"go-gerbang/config"
+	"go-gerbang/handlers"
+	"go-gerbang/models"
 
 	"strings"
 

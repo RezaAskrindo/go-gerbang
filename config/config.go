@@ -18,7 +18,7 @@ var ConfigPath = "./config/config.json"
 // var BasePath = "/home/siasura1/golangapp/"
 // var ConfigPath = "config/config.json"
 
-var PathEnv = BasePath + "../.env"
+var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
 	err := godotenv.Load(PathEnv)

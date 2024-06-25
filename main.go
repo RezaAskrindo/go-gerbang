@@ -4,12 +4,12 @@ import (
 	"log"
 	"time"
 
-	"sika_apigateway/config"
-	"sika_apigateway/database"
-	"sika_apigateway/middleware"
+	"go-gerbang/config"
+	"go-gerbang/database"
+	"go-gerbang/middleware"
 
-	"sika_apigateway/proxyroute"
-	"sika_apigateway/routes"
+	"go-gerbang/proxyroute"
+	"go-gerbang/routes"
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"

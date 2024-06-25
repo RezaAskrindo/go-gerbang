@@ -3,11 +3,11 @@ package proxyroute
 import (
 	"encoding/json"
 	"fmt"
+	"go-gerbang/config"
+	"go-gerbang/middleware"
+	"go-gerbang/types"
 	"log"
 	"os"
-	"sika_apigateway/config"
-	"sika_apigateway/middleware"
-	"sika_apigateway/types"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"

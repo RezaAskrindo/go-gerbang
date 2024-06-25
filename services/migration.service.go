@@ -1,10 +1,10 @@
 package services
 
 import (
-	"sika_apigateway/handlers"
-	"sika_apigateway/models"
+	"go-gerbang/handlers"
+	"go-gerbang/models"
 
-	"sika_apigateway/database"
+	"go-gerbang/database"
 
 	"github.com/gofiber/fiber/v2"
 )

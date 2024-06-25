@@ -2,8 +2,8 @@ package services
 
 import (
 	"encoding/json"
+	"go-gerbang/types"
 	"os"
-	"sika_apigateway/types"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"

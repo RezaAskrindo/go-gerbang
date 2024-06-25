@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"sika_apigateway/middleware"
-	"sika_apigateway/services"
+	"go-gerbang/middleware"
+	"go-gerbang/services"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	"sika_apigateway/config"
+	"go-gerbang/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"sika_apigateway/database"
+	"go-gerbang/database"
 	"time"
 
 	"github.com/google/uuid"
