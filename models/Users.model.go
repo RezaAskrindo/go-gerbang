@@ -12,7 +12,7 @@ type User struct {
 	// IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id_account"`
 	IdAccount          string     `gorm:"type:uuid;primaryKey" json:"id_account"`
 	IdentityNumber     string     `gorm:"default:null;size:64" json:"identity_number"`
-	Username           string     `gorm:"not null;size:128;index:idx_username,unique" json:"username"`
+	Username           string     `gorm:"not null;size:128" json:"username"`
 	FullName           string     `gorm:"not null;size:128" json:"full_name"`
 	Email              string     `gorm:"default:null;size:128" json:"email"`
 	PhoneNumber        string     `gorm:"default:null;size:13" json:"phone_number"`

@@ -8,9 +8,9 @@ import (
 
 type UserLogIp struct {
 	AccountId string `gorm:"type:uuid;primaryKey" json:"account_id"`
-	IpLogin   string `gorm:"not null;size:32" json:"ip_login"`
+	IpLogin   string `gorm:"primaryKey;not null;size:32" json:"ip_login"`
 	TimeLogin int    `gorm:"not null" json:"time_login"`
-	User      User   `gorm:"foreignKey:IdAccount;references:AccountId" json:"user"`
+	Users     []User `gorm:"foreignKey:IdAccount;references:AccountId" json:"users"`
 }
 
 func CreateUserLogIp(userLogIp *UserLogIp) *gorm.DB {

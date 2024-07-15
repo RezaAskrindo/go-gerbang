@@ -10,19 +10,33 @@ import (
 )
 
 func MigrationService(c *fiber.Ctx) error {
-	database.GDB.AutoMigrate(&models.User{})
+	err := database.GDB.AutoMigrate(&models.User{}, &models.UserLogIp{}, &models.AuthRule{}, &models.UserAssignment{})
+
+	if err != nil {
+		return c.JSON(fiber.Map{"message": "failed to migration", "error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"message": "success migration"})
+	// database.GDB.AutoMigrate(&models.UserLogIp{})
+	// database.GDB.AutoMigrate(&models.AuthRule{})
+	// database.GDB.AutoMigrate(&models.UserAssignment{})
+	// database.GDB.Migrator().CreateTable(&models.User{})
+	// return nil
+}
+
+func MigrateAdminUser(c *fiber.Ctx) error {
 	if database.GDB.Migrator().HasTable(&models.User{}) {
-		database.GDB.Create(&models.User{
+		errCreate := database.GDB.Create(&models.User{
 			Username:      "admin",
 			FullName:      "Admin",
 			StatusAccount: 10,
 			PasswordHash:  handlers.GeneratePasswordHash("@dmin9192"),
 		})
+
+		if errCreate != nil {
+			return c.JSON(fiber.Map{"message": "failed to create admin", "error": errCreate})
+		}
 	}
-	database.GDB.AutoMigrate(&models.UserLogIp{})
-	database.GDB.AutoMigrate(&models.AuthRule{})
-	database.GDB.AutoMigrate(&models.UserAssignment{})
-	// database.GDB.Migrator().CreateTable(&models.User{})
-	// return nil
-	return c.JSON(fiber.Map{"message": "success migration"})
+
+	return c.JSON(fiber.Map{"message": "success create admin"})
 }
