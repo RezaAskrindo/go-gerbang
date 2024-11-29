@@ -1,14 +1,19 @@
 package services
 
 import (
-	"encoding/json"
-	"go-gerbang/types"
-	"os"
+	"go-gerbang/config"
+	"go-gerbang/handlers"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
 )
 
+// @Summary Get CSRF Cookie
+// @Description Get CSRF Cookie
+// @Tags security
+// @Accept json
+// @Produce json
+// @Router /secure-gateway-c [get]
 func IndexService(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok"})
 }
@@ -18,38 +23,35 @@ func ProtectService(c *fiber.Ctx) error {
 }
 
 func InfoService(c *fiber.Ctx) error {
-	file, err := os.Open("./config/config.json")
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	var MapMicroService []types.ValueMicroService
-	err = json.NewDecoder(file).Decode(&MapMicroService)
+	var err error
+	handlers.MapMicroService, err = handlers.LoadConfig(config.BasePath + config.ConfigPath)
 	if err != nil {
 		return err
 	}
 
-	for i := range MapMicroService {
+	done := make(chan bool)
+	go handlers.WatchConfigFile(config.BasePath+config.ConfigPath, done)
+
+	for i := range handlers.MapMicroService.Services {
 		req := fasthttp.AcquireRequest()
 		res := fasthttp.AcquireResponse()
 		defer fasthttp.ReleaseRequest(req)
 		defer fasthttp.ReleaseResponse(res)
 
-		req.SetRequestURI(MapMicroService[i].Url)
+		req.SetRequestURI(handlers.MapMicroService.Services[i].Url)
 
-		MapMicroService[i].Status = true
+		handlers.MapMicroService.Services[i].Status = true
 
 		client := &fasthttp.Client{}
 		if err := client.Do(req, res); err != nil {
 			// fmt.Printf("Error: %s\n", err)
-			MapMicroService[i].Status = false
+			handlers.MapMicroService.Services[i].Status = false
 		}
 
 		if res.StatusCode() != fiber.StatusOK {
-			MapMicroService[i].Status = false
+			handlers.MapMicroService.Services[i].Status = false
 		}
 	}
 
-	return c.JSON(MapMicroService)
+	return c.JSON(handlers.MapMicroService.Services)
 }

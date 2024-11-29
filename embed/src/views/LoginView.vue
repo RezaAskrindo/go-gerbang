@@ -30,8 +30,21 @@ const form: FormLogin = reactive({
   password: ''
 })
 
-function submitLogin() {
-  console.log(form)
+async function submitLogin() {
+  // console.log(form)
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(form),
+    });
+
+
+  } catch (error) {
+    
+  }
 }
 
 </script>

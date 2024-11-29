@@ -5,13 +5,15 @@ import (
 	"time"
 
 	"go-gerbang/config"
-	"go-gerbang/database"
+	// "go-gerbang/database"
+	"go-gerbang/docs"
 	"go-gerbang/middleware"
 
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 
-	"github.com/bytedance/sonic"
+	"github.com/goccy/go-json"
+	"github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -23,20 +25,32 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/swagger"
+	"go.uber.org/zap"
 )
+
+const (
+	appName = "GO Gerbang"
+)
+
+// @termsOfService http://swagger.io/terms/
+// @contact.name Muhammad Reza
+// @contact.email m.reza911992@gmail.com
 
 func main() {
 	app := fiber.New(fiber.Config{
-		JSONEncoder:   sonic.Marshal,
-		JSONDecoder:   sonic.Unmarshal,
+		JSONEncoder:   json.Marshal,
+		JSONDecoder:   json.Unmarshal,
 		BodyLimit:     100 * 1024 * 1024, // this is the default limit of 100MB
+		ServerHeader:  appName,
+		AppName:       appName,
 		CaseSensitive: true,
-		ServerHeader:  "AZER CORP",
-		AppName:       "Gateway App v1.0.0",
+		StrictRouting: true,
 		// Prefork:       true,
-		// StrictRouting: true,
 		// DisableStartupMessage: true,
 	})
+
+	// defer app.Shutdown()
 
 	app.Use(idempotency.New())
 
@@ -80,14 +94,31 @@ func main() {
 
 	app.Use(earlydata.New())
 
+	docs.SwaggerInfo.Title = appName
+	docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
+	docs.SwaggerInfo.Version = "1.0"
+	docs.SwaggerInfo.Host = "localhost:" + config.Config("PORT_APIGATEWAY")
+	docs.SwaggerInfo.BasePath = "/"
+
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
+	app.Use(fiberzap.New(fiberzap.Config{
+		Logger: logger,
+	}))
+
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 200, "status": "live", "message": config.Config("TEST_SCRIPT")})
+		return c.Send([]byte("Welcome to GO GERBANG"))
+		// return c.Status(fiber.StatusOK).JSON(fiber.Map{"code": 200, "status": "live", "message": config.Config("TEST_SCRIPT")})
 	})
 
-	database.ConnectGormDB()
+	// database.ConnectGormDB()
 
-	routes.MainRoutes(app)
 	proxyroute.MainProxyRoutes(app)
+	routes.MainRoutes(app)
+	routes.AuthRoutes(app)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})

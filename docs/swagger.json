@@ -1,0 +1,60 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Muhammad Reza",
+            "email": "m.reza911992@gmail.com"
+        }
+    },
+    "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Get CSRF Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "security"
+                ],
+                "summary": "Get CSRF Cookie",
+                "responses": {}
+            }
+        },
+        "/get-captcha": {
+            "get": {
+                "description": "Captcha Security For Login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "security"
+                ],
+                "summary": "Captcha",
+                "responses": {}
+            }
+        },
+        "/secure-gateway-c": {
+            "get": {
+                "description": "Get CSRF Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "security"
+                ],
+                "summary": "Get CSRF Cookie",
+                "responses": {}
+            }
+        }
+    }
+}

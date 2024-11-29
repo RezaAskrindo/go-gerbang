@@ -9,6 +9,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func CheckMigrationStatus(c *fiber.Ctx) error {
+	_, err := models.FindUserByIdentity("admin")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": "Admin not found"})
+	}
+	return c.JSON(fiber.Map{"success": true, "message": "Admin found"})
+}
+
 func MigrationService(c *fiber.Ctx) error {
 	err := database.GDB.AutoMigrate(&models.User{}, &models.UserLogIp{}, &models.AuthRule{}, &models.UserAssignment{})
 

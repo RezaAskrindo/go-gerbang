@@ -313,6 +313,12 @@ func SaveUserSession(user_data models.UserData, c *fiber.Ctx) error {
 	return nil
 }
 
+// @Summary Captcha
+// @Description Captcha Security For Login
+// @Tags security
+// @Accept json
+// @Produce json
+// @Router /get-captcha [get]
 func GenerateCaptcha(c *fiber.Ctx) error {
 	c.Type("png")
 	data := c.Locals("captcha").(*captcha.Data)

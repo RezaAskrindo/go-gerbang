@@ -1,6 +1,6 @@
 package types
 
-type ValueMicroService struct {
+type Service struct {
 	Path              string `json:"path"`
 	Url               string `json:"url"`
 	AuthProtection    bool   `json:"auth_protection"`
@@ -10,9 +10,9 @@ type ValueMicroService struct {
 	Status            bool   `json:"status"`
 }
 
-// type ValueMicroServiceResponses struct {
-// 	Menu []ValueMicroService `json:"menu"`
-// }
+type ConfigServices struct {
+	Services []Service `json:"services"`
+}
 
 type LoginInput struct {
 	Id       int    `json:"id"`

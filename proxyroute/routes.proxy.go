@@ -1,42 +1,56 @@
 package proxyroute
 
 import (
-	"encoding/json"
-	"fmt"
-	"go-gerbang/config"
-	"go-gerbang/middleware"
-	"go-gerbang/types"
 	"log"
-	"os"
 	"strings"
+	"time"
+
+	"go-gerbang/config"
+	"go-gerbang/handlers"
+	"go-gerbang/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/proxy"
+	"github.com/valyala/fasthttp"
 )
 
 func MainProxyRoutes(app *fiber.App) {
-	file, err := os.Open(config.BasePath + config.ConfigPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+	// file, err := os.Open(config.BasePath + config.ConfigPath)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer file.Close()
 
-	var MapMicroService []types.ValueMicroService
-	err = json.NewDecoder(file).Decode(&MapMicroService)
+	// var MapMicroService []types.Service
+	// err = json.NewDecoder(file).Decode(&MapMicroService)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	var err error
+	handlers.MapMicroService, err = handlers.LoadConfig(config.BasePath + config.ConfigPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error loading config: %v", err)
 	}
 
-	for _, data := range MapMicroService {
-		if data.AuthProtection == true {
+	done := make(chan bool)
+	go handlers.WatchConfigFile(config.BasePath+config.ConfigPath, done)
+
+	proxy.WithClient(&fasthttp.Client{
+		NoDefaultUserAgentHeader: true,
+		DisablePathNormalizing:   true,
+	})
+
+	for _, data := range handlers.MapMicroService.Services {
+		if data.AuthProtection {
 			app.Use(data.Path, middleware.CsrfProtection, middleware.Auth, func(c *fiber.Ctx) error {
 				path := c.OriginalURL()
 				params := strings.TrimPrefix(path, data.Path)
 				url := data.Url + params
 
-				// if err := proxy.DoTimeout(c, url, 30*time.Second); err != nil {
-				if err := proxy.Do(c, url); err != nil {
-					fmt.Printf("Error: %s\n", url)
+				// if err := proxy.Do(c, url); err != nil {
+				if err := proxy.DoTimeout(c, url, 30*time.Second); err != nil {
+					log.Println("Error: %s\n", err.Error())
 					// return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": "endpoint is not running"})
 					// return nil
@@ -46,7 +60,7 @@ func MainProxyRoutes(app *fiber.App) {
 				return nil
 			})
 		} else {
-			app.Use(data.Path, middleware.CsrfProtection, func(c *fiber.Ctx) error {
+			app.Use(data.Path, func(c *fiber.Ctx) error {
 				path := c.OriginalURL()
 				params := strings.TrimPrefix(path, data.Path)
 				url := data.Url + params

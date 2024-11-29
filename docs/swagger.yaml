@@ -1,0 +1,40 @@
+info:
+  contact:
+    email: m.reza911992@gmail.com
+    name: Muhammad Reza
+  termsOfService: http://swagger.io/terms/
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Get CSRF Cookie
+      produces:
+      - application/json
+      responses: {}
+      summary: Get CSRF Cookie
+      tags:
+      - security
+  /get-captcha:
+    get:
+      consumes:
+      - application/json
+      description: Captcha Security For Login
+      produces:
+      - application/json
+      responses: {}
+      summary: Captcha
+      tags:
+      - security
+  /secure-gateway-c:
+    get:
+      consumes:
+      - application/json
+      description: Get CSRF Cookie
+      produces:
+      - application/json
+      responses: {}
+      summary: Get CSRF Cookie
+      tags:
+      - security
+swagger: "2.0"

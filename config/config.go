@@ -9,7 +9,7 @@ import (
 )
 
 var BasePath = ""
-var ConfigPath = "./config/config.json"
+var ConfigPath = "./config/config-dev.json"
 
 // FOR LINUX USE FULL PATH
 // var BasePath = "/home/adminfra/sika/"

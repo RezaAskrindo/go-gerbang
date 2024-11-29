@@ -1,11 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
 
+	"go-gerbang/types"
+
+	"github.com/fsnotify/fsnotify"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -14,7 +21,7 @@ import (
 func ParseBody(ctx *fiber.Ctx, body interface{}) error {
 	if err := ctx.BodyParser(body); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
+			"status":  false,
 			"message": "Failed To Parse Body",
 		})
 	}
@@ -24,7 +31,7 @@ func ParseBody(ctx *fiber.Ctx, body interface{}) error {
 
 func ParseBodyErrorResponse(c *fiber.Ctx, err error) error {
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"status":  "error",
+		"status":  false,
 		"message": err.Error(),
 	})
 }
@@ -99,3 +106,55 @@ var Client = fasthttp.Client{}
 
 // UUID google
 var UUID = uuid.New()
+
+var MapMicroService *types.ConfigServices
+
+func LoadConfig(filename string) (*types.ConfigServices, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("could not open config file: %w", err)
+	}
+	defer file.Close()
+
+	var config types.ConfigServices
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&config); err != nil {
+		return nil, fmt.Errorf("could not decode config file: %w", err)
+	}
+
+	return &config, nil
+}
+
+func WatchConfigFile(filename string, done chan bool) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("Error creating file watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(filename)
+	if err != nil {
+		log.Fatalf("Error adding file to watcher: %v", err)
+	}
+
+	for {
+		select {
+		case <-done:
+			return
+		case event := <-watcher.Events:
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				log.Println("Config file modified, reloading...")
+				// Reload the configuration file when it is modified
+				newConfig, err := LoadConfig(filename)
+				if err == nil {
+					MapMicroService = newConfig
+					log.Println("Config reloaded successfully")
+				} else {
+					log.Printf("Error reloading config: %v", err)
+				}
+			}
+		case err := <-watcher.Errors:
+			log.Printf("Watcher error: %v", err)
+		}
+	}
+}

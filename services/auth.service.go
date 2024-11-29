@@ -14,6 +14,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// @Summary Get CSRF Cookie
+// @Description Get CSRF Cookie
+// @Tags security
+// @Accept json
+// @Produce json
+// @Router /api/v1/auth/login [post]
 func Login(c *fiber.Ctx) error {
 	captcha := c.QueryBool("captcha")
 	block := c.QueryBool("block")

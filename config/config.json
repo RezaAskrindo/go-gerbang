@@ -1,7 +1,9 @@
-[
-  {
-    "path": "/api/skor",
-    "url": "http://localhost:5000",
-    "auth_protection": false
-  }
-]
+{
+  "services": [
+    {
+      "path": "/api/skor",
+      "url": "http://localhost:5000",
+      "auth_protection": false
+    }
+  ]
+}

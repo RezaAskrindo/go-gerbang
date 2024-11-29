@@ -1,7 +1,16 @@
-[
-  {
-    "path": "/api/skor",
-    "url": "http://localhost:5000",
-    "auth_protection": true
-  }
-]
+{
+  "services": [
+    {
+      "path": "/api/skor/",
+      "url": "http://localhost:5000",
+      "auth_protection": false,
+      "csrf_protection": false
+    },
+    {
+      "path": "/api/grc/",
+      "url": "http://localhost:8070",
+      "auth_protection": false,
+      "csrf_protection": false
+    }
+  ]
+}
