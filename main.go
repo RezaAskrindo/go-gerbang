@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"go-gerbang/config"
-	// "go-gerbang/database"
+	"go-gerbang/database"
 	"go-gerbang/docs"
 	"go-gerbang/middleware"
 
@@ -38,6 +38,8 @@ const (
 // @contact.email m.reza911992@gmail.com
 
 func main() {
+	database.ConnectGormDB()
+
 	app := fiber.New(fiber.Config{
 		JSONEncoder:   json.Marshal,
 		JSONDecoder:   json.Unmarshal,
@@ -94,6 +96,13 @@ func main() {
 
 	app.Use(earlydata.New())
 
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
+	app.Use(fiberzap.New(fiberzap.Config{
+		Logger: logger,
+	}))
+
 	docs.SwaggerInfo.Title = appName
 	docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
 	docs.SwaggerInfo.Version = "1.0"
@@ -102,19 +111,10 @@ func main() {
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-
-	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: logger,
-	}))
-
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Send([]byte("Welcome to GO GERBANG"))
 		// return c.Status(fiber.StatusOK).JSON(fiber.Map{"code": 200, "status": "live", "message": config.Config("TEST_SCRIPT")})
 	})
-
-	// database.ConnectGormDB()
 
 	proxyroute.MainProxyRoutes(app)
 	routes.MainRoutes(app)

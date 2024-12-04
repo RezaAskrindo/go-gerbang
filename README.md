@@ -13,3 +13,10 @@ Go Gerbang adalah Api Gateway menggunakan bahasa Go
 ```bash
 {PATH}:{PORT}/migration
 ```
+
+## Swagger
+
+untuk mengupdate swagger gunakan syntax berikut:
+```bash
+swag init
+```

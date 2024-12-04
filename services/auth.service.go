@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
@@ -14,11 +15,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// @Summary Get CSRF Cookie
-// @Description Get CSRF Cookie
-// @Tags security
+// @Summary Login
+// @Description Login Api Explaination
+// @Tags auth
 // @Accept json
 // @Produce json
+// @Param user body types.LoginInput true "Login Input"
+// @Success 200 {object} ResponseHTTP{data=SuccessStruct}
+// @Failure 400 {object} ResponseHTTP{}
 // @Router /api/v1/auth/login [post]
 func Login(c *fiber.Ctx) error {
 	captcha := c.QueryBool("captcha")
@@ -58,11 +62,13 @@ func Login(c *fiber.Ctx) error {
 
 	user, err := models.FindUserByIdentity(identity)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "message": "Error On Find User"})
+		// return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "message": "Error On Find User"})
+		return BadRequestErrorResponse(c, err)
 	}
 
 	if user.StatusAccount == 0 {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Your Account is not active or blocked"})
+		// return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Your Account is not active or blocked"})
+		return UnauthorizedErrorResponse(c, fmt.Errorf("your account is not active or blocked"))
 	}
 
 	password := input.Password
@@ -99,14 +105,16 @@ func Login(c *fiber.Ctx) error {
 	user_data := handlers.SendSafeUserData(user, randString)
 
 	if err := models.GenerateAuthKeyUser(user_data.IdAccount, user_data.AuthKey).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+		// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+		return InternalServerErrorResponse(c, err)
 	}
 
 	// SESSION QUERY
 	if session {
 		err := middleware.SaveUserSession(user_data, c)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+			// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+			return InternalServerErrorResponse(c, err)
 		}
 	}
 
@@ -114,13 +122,15 @@ func Login(c *fiber.Ctx) error {
 	if validate_ip {
 		errValidate := handlers.ValidateUserLoginIp(user_data, c)
 		if errValidate != nil {
-			return c.JSON(fiber.Map{"success": false, "message": errValidate.Error(), "data": user_data})
+			// return c.JSON(fiber.Map{"success": false, "message": errValidate.Error(), "data": user_data})
+			return SuccessResponse(c, errValidate.Error(), user_data, nil)
 		}
 	}
 
 	token, err := handlers.GenerateTokenJWT(user_data, c)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+		// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+		return InternalServerErrorResponse(c, err)
 	}
 
 	if httponly {
@@ -135,11 +145,13 @@ func Login(c *fiber.Ctx) error {
 			cookie.Secure = config.SecureCookies
 			c.Cookie(cookie)
 
-			return c.JSON(fiber.Map{"success": true, "message": "Success Login for domain:" + domain, "data": user_data})
+			// return c.JSON(fiber.Map{"success": true, "message": "Success Login for domain:" + domain, "data": user_data})
+			return SuccessResponse(c, "Success Login for domain:"+domain, user_data, nil)
 		}
 	}
 
-	return c.JSON(fiber.Map{"success": true, "message": "Success Login", "token": token, "data": user_data})
+	// return c.JSON(fiber.Map{"success": true, "message": "Success Login", "token": token, "data": user_data})
+	return SuccessResponse(c, "Success Login", user_data, nil)
 }
 
 func LoginWithGoogle(c *fiber.Ctx) error {
