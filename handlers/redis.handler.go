@@ -5,15 +5,8 @@ import (
 	"encoding/json"
 
 	"go-gerbang/config"
-
-	"github.com/go-redis/redis/v8"
+	"go-gerbang/database"
 )
-
-// IF PRODUCTION DOMAINESIA USE UNIX
-var Cache = redis.NewClient(&redis.Options{
-	Addr:    config.Config("REDIS_ADDRES"),
-	Network: config.Config("REDIS_NETWORK"),
-})
 
 var Ctx = context.Background()
 
@@ -32,4 +25,20 @@ func ToMarshal(val interface{}) (body []byte) {
 		panic(err)
 	}
 	return body
+}
+
+func SaveToRedis(Key string, Value interface{}) error {
+	cacheDelErr := database.RedisDb.Del(Ctx, Key).Err()
+	if cacheDelErr != nil {
+		return cacheDelErr
+	}
+
+	data := ToMarshal(Value)
+
+	cacheSetErr := database.RedisDb.Set(Ctx, Key, data, config.AuthTimeCache).Err()
+	if cacheSetErr != nil {
+		return cacheSetErr
+	}
+
+	return nil
 }

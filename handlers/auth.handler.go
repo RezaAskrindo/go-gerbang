@@ -2,15 +2,15 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
-	"go-gerbang/config"
-	"go-gerbang/database"
-	"go-gerbang/models"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"go-gerbang/config"
+	"go-gerbang/database"
+	"go-gerbang/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -93,7 +93,7 @@ func VerifyIdTokenGoogle(idToken string) (*oauth2.Tokeninfo, error) {
 // SUPPORT FUNCTION
 func SendSafeUserData(user *models.User, randString string) models.UserData {
 	return models.UserData{
-		IdAccount:      user.IdAccount,
+		IdAccount:      user.IdAccount.String(),
 		IdentityNumber: user.IdentityNumber,
 		Username:       user.Username,
 		FullName:       user.FullName,
@@ -140,31 +140,13 @@ func GenerateTokenJWT(user_data models.UserData, c *fiber.Ctx) (string, error) {
 	return t, nil
 }
 
-func GenerateAuthkeyToRedis(IdAccount string, AuthKey string) error {
-	user_auth_by_id := fmt.Sprintf("user-gateway-%s", IdAccount)
-
-	cacheDelErr := Cache.Del(Ctx, user_auth_by_id).Err()
-	if cacheDelErr != nil {
-		return cacheDelErr
-	}
-
-	data := ToMarshal(AuthKey)
-
-	cacheSetErr := Cache.Set(Ctx, user_auth_by_id, data, config.AuthTimeCache).Err()
-	if cacheSetErr != nil {
-		return cacheSetErr
-	}
-
-	return nil
-}
-
 func ValidateUserLoginIp(user_data models.UserData, c *fiber.Ctx) error {
 	var count int64
 
 	database.GDB.Table("user_log_ip").Where("user_id = ? AND ip_login = ?", user_data.IdAccount, user_data.LoginIp).Count(&count)
 
 	if count == 0 && user_data.LoginIp != "127.0.0.1" {
-		return errors.New("You're login in new IP, please identify yourself first")
+		return errors.New("you're login in new IP, please identify yourself first")
 	}
 
 	return nil

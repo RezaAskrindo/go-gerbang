@@ -8,13 +8,16 @@ import (
 )
 
 func AuthRoutes(app *fiber.App) {
-	auth := app.Group("/api")
-	auth.Post("/v1/auth/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
+	auth := app.Group("/api/v1/auth")
 
-	auth.Post("/with-google", services.LoginWithGoogle)
+	auth.Get("/logout", services.LogoutWeb)
+	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
 
-	authSession := auth.Group("/v1/auth").Use(middleware.Auth)
-	authSession.Get("/get-session", services.GetSessionJWT)
-	authSession.Get("/auth-key/:token", services.AuthByJWT)
-	authSession.Get("/logout", services.LogoutWeb)
+	auth.Get("/get-captcha", middleware.ValidateCaptcha, middleware.GenerateCaptcha)
+	auth.Get("/get-session", middleware.ValidateSession, services.GetSession)
+	auth.Get("/get-jwt-info", middleware.Auth, services.GetSessionJWT)
+
+	// auth.Post("/with-google", services.LoginWithGoogle)
+	// authSession := auth.Group("/v1/auth") //.Use(middleware.Auth)
+	// authSession.Get("/auth-key/:token", services.AuthByJWT)
 }

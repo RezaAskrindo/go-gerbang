@@ -13,7 +13,7 @@ import (
 	"go-gerbang/routes"
 
 	"github.com/goccy/go-json"
-	"github.com/gofiber/contrib/fiberzap/v2"
+	// "github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -26,7 +26,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/swagger"
-	"go.uber.org/zap"
+	// "go.uber.org/zap"
 )
 
 const (
@@ -47,9 +47,9 @@ func main() {
 		ServerHeader:  appName,
 		AppName:       appName,
 		CaseSensitive: true,
-		StrictRouting: true,
-		// Prefork:       true,
+		// StrictRouting:         true,
 		// DisableStartupMessage: true,
+		// Prefork:       true,
 	})
 
 	// defer app.Shutdown()
@@ -59,6 +59,8 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.Config("ALLOW_ORIGINS"),
 		AllowCredentials: true,
+		// AllowOrigins: "*",
+		// AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
 	app.Use(helmet.New(helmet.Config{
@@ -96,12 +98,12 @@ func main() {
 
 	app.Use(earlydata.New())
 
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
+	// logger, _ := zap.NewProduction()
+	// defer logger.Sync()
 
-	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: logger,
-	}))
+	// app.Use(fiberzap.New(fiberzap.Config{
+	// 	Logger: logger,
+	// }))
 
 	docs.SwaggerInfo.Title = appName
 	docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
@@ -113,17 +115,18 @@ func main() {
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Send([]byte("Welcome to GO GERBANG"))
-		// return c.Status(fiber.StatusOK).JSON(fiber.Map{"code": 200, "status": "live", "message": config.Config("TEST_SCRIPT")})
 	})
 
-	proxyroute.MainProxyRoutes(app)
 	routes.MainRoutes(app)
 	routes.AuthRoutes(app)
+
+	proxyroute.MainProxyRoutes(app)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 
+	log.Println("server running")
 	log.Fatal(app.Listen(config.Config("PORT_APIGATEWAY")))
 
 	middleware.SessionStore.Storage.Close()

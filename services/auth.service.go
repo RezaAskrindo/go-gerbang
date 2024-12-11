@@ -3,13 +3,14 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
+
 	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
 	"go-gerbang/models"
 	"go-gerbang/types"
-	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -31,6 +32,7 @@ func Login(c *fiber.Ctx) error {
 	httponly := c.QueryBool("httponly")
 	domain := c.Query("domain")
 	validate_ip := c.QueryBool("validate_ip")
+	single_login := c.QueryBool("single_login")
 
 	input := new(types.LoginInput)
 
@@ -38,23 +40,27 @@ func Login(c *fiber.Ctx) error {
 		return handlers.ParseBodyErrorResponse(c, err)
 	}
 
+	if err := handlers.ValidateStruct(*input); err != nil {
+		return c.Status(fiber.StatusOK).JSON(err)
+	}
+
 	// CAPTCHA QUERY
 	if captcha {
 		sess, err := middleware.CaptchaStore.Get(c)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
+			return handlers.InternalServerErrorResponse(c, err)
 		}
 
 		sessionCaptcha := sess.Get("captcha")
 		if sessionCaptcha == nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": "Session Captcha is null"})
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("session captcha is null"))
 		}
 
 		captcha := sessionCaptcha.(string)
 		intCaptcha, err := strconv.Atoi(captcha)
 
 		if input.Captcha != intCaptcha {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Invalid Captcha"})
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid captcha"))
 		}
 	}
 
@@ -62,13 +68,11 @@ func Login(c *fiber.Ctx) error {
 
 	user, err := models.FindUserByIdentity(identity)
 	if err != nil {
-		// return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "message": "Error On Find User"})
-		return BadRequestErrorResponse(c, err)
+		return handlers.BadRequestErrorResponse(c, fmt.Errorf("error on find user"))
 	}
 
 	if user.StatusAccount == 0 {
-		// return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Your Account is not active or blocked"})
-		return UnauthorizedErrorResponse(c, fmt.Errorf("your account is not active or blocked"))
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your account is not active or blocked"))
 	}
 
 	password := input.Password
@@ -83,14 +87,14 @@ func Login(c *fiber.Ctx) error {
 			if block {
 				if user.LoginAttempts >= 3 {
 					models.BlockUser(user.IdAccount)
-					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "You're Account Has Block, You're Already Fill Wrong Password 3 Time."})
+					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
 				} else {
 					models.UpdateUser(user.IdAccount, u)
-					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Wrong password, you have " + strconv.Itoa(4-(int(u.LoginAttempts))) + " chances left"})
+					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
 				}
 			} else {
 				models.UpdateUser(user.IdAccount, u)
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Wrong password"})
+				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("wrong password"))
 			}
 		} else {
 			u.LoginAttempts = 1
@@ -105,16 +109,14 @@ func Login(c *fiber.Ctx) error {
 	user_data := handlers.SendSafeUserData(user, randString)
 
 	if err := models.GenerateAuthKeyUser(user_data.IdAccount, user_data.AuthKey).Error; err != nil {
-		// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-		return InternalServerErrorResponse(c, err)
+		return handlers.InternalServerErrorResponse(c, err)
 	}
 
 	// SESSION QUERY
 	if session {
-		err := middleware.SaveUserSession(user_data, c)
+		err := middleware.SaveUserSession(c, user_data, single_login) // SINGLE LOGIN
 		if err != nil {
-			// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-			return InternalServerErrorResponse(c, err)
+			return handlers.InternalServerErrorResponse(c, err)
 		}
 	}
 
@@ -122,15 +124,13 @@ func Login(c *fiber.Ctx) error {
 	if validate_ip {
 		errValidate := handlers.ValidateUserLoginIp(user_data, c)
 		if errValidate != nil {
-			// return c.JSON(fiber.Map{"success": false, "message": errValidate.Error(), "data": user_data})
-			return SuccessResponse(c, errValidate.Error(), user_data, nil)
+			return handlers.SuccessResponse(c, errValidate.Error(), user_data, nil)
 		}
 	}
 
 	token, err := handlers.GenerateTokenJWT(user_data, c)
 	if err != nil {
-		// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-		return InternalServerErrorResponse(c, err)
+		return handlers.InternalServerErrorResponse(c, err)
 	}
 
 	if httponly {
@@ -138,117 +138,72 @@ func Login(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusUnprocessableEntity, "For httponly need domain")
 		} else {
 			cookie := new(fiber.Cookie)
-			cookie.Name = "__SecureGatewayJ"
+			cookie.Name = middleware.CookieJWT
 			cookie.Value = "Bearer " + token
 			cookie.HTTPOnly = true
 			cookie.Domain = domain
 			cookie.Secure = config.SecureCookies
+			cookie.SameSite = config.CookieSameSite
+			cookie.SessionOnly = false
 			c.Cookie(cookie)
 
-			// return c.JSON(fiber.Map{"success": true, "message": "Success Login for domain:" + domain, "data": user_data})
-			return SuccessResponse(c, "Success Login for domain:"+domain, user_data, nil)
+			return handlers.SuccessResponse(c, "Success Login for domain:"+domain, user_data, nil)
 		}
 	}
 
-	// return c.JSON(fiber.Map{"success": true, "message": "Success Login", "token": token, "data": user_data})
-	return SuccessResponse(c, "Success Login", user_data, nil)
-}
-
-func LoginWithGoogle(c *fiber.Ctx) error {
-	session := c.QueryBool("session")
-	validate_ip := c.QueryBool("validate_ip")
-
-	b := new(types.GoogleLogin)
-
-	if err := handlers.ParseBody(c, b); err != nil {
-		return handlers.ParseBodyErrorResponse(c, err)
+	res := fiber.Map{
+		"userData": user_data,
+		"token":    token,
 	}
 
-	tokenInfo, err := handlers.VerifyIdTokenGoogle(b.IdToken)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
-	}
-
-	user, err := models.FindUserByIdentity(tokenInfo.Email)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "message": err.Error()})
-	}
-
-	if user.StatusAccount == 0 {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Your Account is not active or blocked"})
-	}
-
-	randString := handlers.RandomString(32)
-
-	user_data := handlers.SendSafeUserData(user, randString)
-
-	if err := models.GenerateAuthKeyUser(user_data.IdAccount, user_data.AuthKey).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-	}
-
-	// SESSION QUERY
-	if session {
-		err := middleware.SaveUserSession(user_data, c)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-		}
-	}
-
-	// VALIDATE IP QUERY
-	if validate_ip {
-		errValidate := handlers.ValidateUserLoginIp(user_data, c)
-		if errValidate != nil {
-			return c.JSON(fiber.Map{"success": false, "message": errValidate.Error(), "data": user_data})
-		}
-	}
-
-	token, err := handlers.GenerateTokenJWT(user_data, c)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-	}
-
-	return c.JSON(fiber.Map{"success": true, "message": "Success Login", "token": token, "data": user_data})
+	return handlers.SuccessResponse(c, "Success Login", res, nil)
 }
 
 func AuthByJWT(c *fiber.Ctx) error {
 	AuthKey := c.Params("token")
 	url := c.Query("url")
 
-	if AuthKey == "" {
-		return fiber.NewError(fiber.StatusUnprocessableEntity, "Need AuthKey")
-	}
-
 	if url == "" {
-		return fiber.NewError(fiber.StatusUnprocessableEntity, "Need url")
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("need url params"))
 	}
 
 	user := new(models.User)
 
 	err := models.FindUserByAuthKey(user, AuthKey).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return c.SendStatus(fiber.StatusNotFound)
+		return handlers.NotFoundErrorResponse(c, fmt.Errorf("auth key is not found"))
 	}
 
 	currSession, err := middleware.SessionStore.Get(c)
 	if err != nil {
-		return err
+		return handlers.InternalServerErrorResponse(c, err)
 	}
 	defer currSession.Save()
 
 	err = currSession.Regenerate()
 	if err != nil {
-		return err
+		return handlers.InternalServerErrorResponse(c, err)
 	}
 
 	userSession := currSession.Get("User")
 
 	if userSession == nil {
-		currSession.Set("User", user.Username)
-		currSession.Set("UserID", user.IdAccount)
-		currSession.Set("auth_key", user.AuthKey)
+		currSession.Set(middleware.UserId, user.IdAccount)
+		currSession.Set(middleware.AuthKey, user.AuthKey)
+		currSession.Set(middleware.Username, user.Username)
+
+		err := currSession.Save()
+		if err != nil {
+			return handlers.InternalServerErrorResponse(c, err)
+		}
 	}
 
-	return c.Redirect(url)
+	redirectUrl := c.Query("redirectUrl")
+	if redirectUrl != "" {
+		return c.Redirect(redirectUrl)
+	}
+
+	return handlers.SuccessResponse(c, "current session", userSession, nil)
 }
 
 func GetSessionJWT(c *fiber.Ctx) error {
@@ -272,40 +227,62 @@ func GetSessionJWT(c *fiber.Ctx) error {
 		UpdatedAt:       c.Locals("updated_at").(int),
 	}
 
-	return c.JSON(fiber.Map{"success": true, "message": data})
+	// return c.JSON(fiber.Map{"success": true, "message": data})
+	return handlers.SuccessResponse(c, "Success Get JWT", data, nil)
+}
+
+func GetSession(c *fiber.Ctx) error {
+	currSession, err := middleware.SessionStore.Get(c)
+	if err != nil {
+		return handlers.UnauthorizedErrorResponse(c, err)
+	}
+
+	if len(currSession.Keys()) > 0 {
+
+		userId, ok := currSession.Get(middleware.UserId).(string)
+		if !ok {
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("session userId is null"))
+		}
+		authKey, _ := currSession.Get(middleware.AuthKey).(string)
+		username, _ := currSession.Get(middleware.Username).(string)
+		fullName, _ := currSession.Get(middleware.FullName).(string)
+
+		data := new(models.UserData)
+		data = &models.UserData{
+			IdAccount: userId,
+			AuthKey:   authKey,
+			Username:  username,
+			FullName:  fullName,
+		}
+
+		return handlers.SuccessResponse(c, "success get session", data, nil)
+	}
+
+	return handlers.SuccessResponse(c, "no session", nil, nil)
 }
 
 func LogoutWeb(c *fiber.Ctx) error {
-	redirectUrl := c.Query("redirectUrl")
-
-	if redirectUrl == "" {
-		return fiber.NewError(fiber.StatusUnprocessableEntity, "Need redirectUrl")
-	}
-
 	currSession, err := middleware.SessionStore.Get(c)
 	if err != nil {
-		return err
-	}
-	defer currSession.Save()
-
-	err = currSession.Regenerate()
-	if err != nil {
-		return err
+		return handlers.UnauthorizedErrorResponse(c, err)
 	}
 
-	userSession := currSession.Get("User")
-
-	if userSession != nil {
-		currSession.Delete("User")
-		if err := currSession.Destroy(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
-		}
+	if err := currSession.Destroy(); err != nil {
+		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	cookie := new(fiber.Cookie)
-	cookie.Name = "__SecureGatewayJ"
-	cookie.Expires = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	c.Cookie(cookie)
+	currSession.SetExpiry(time.Second * -60)
 
-	return c.Redirect(redirectUrl)
+	cookieJWT := new(fiber.Cookie)
+	cookieJWT.Name = middleware.CookieJWT
+	// cookieJWT.Expires = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	cookieJWT.Expires = time.Now().Add(-(time.Hour * 2))
+	c.Cookie(cookieJWT)
+
+	redirectUrl := c.Query("redirectUrl")
+	if redirectUrl != "" {
+		return c.Redirect(redirectUrl)
+	}
+
+	return handlers.SuccessResponse(c, "success logout", currSession, nil)
 }

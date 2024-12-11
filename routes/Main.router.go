@@ -1,7 +1,6 @@
 package routes
 
 import (
-	// "go-gerbang/embed"
 	"go-gerbang/middleware"
 	"go-gerbang/services"
 
@@ -18,15 +17,15 @@ func MainRoutes(app *fiber.App) {
 	// 	Index:        "index.html",
 	// }))
 
-	app.Get("/metrics", monitor.New(monitor.Config{Title: "GO GERBANG Metrics Page"}))
+	app.Get("/monitor", monitor.New(monitor.Config{Title: "GO GERBANG Monitor Page"}))
 
 	// app.Static("/info", "./info")
 
 	// GET CSRF TOKEN
 	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
-	app.Get("/api/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
+	// app.Get("/api/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
 	// PROTECT
-	app.Get("/test-protect", middleware.Auth, services.ProtectService)
+	// app.Get("/test-protect", middleware.Auth, services.ProtectService)
 
 	app.Get("/check-migration", services.CheckMigrationStatus)
 	app.Get("/migration", services.MigrationService)
@@ -36,15 +35,4 @@ func MainRoutes(app *fiber.App) {
 			"admin": "9192",
 		},
 	}), services.InfoService)
-
-	app.Get("/get-captcha", middleware.ValidateCaptcha, middleware.GenerateCaptcha)
-
-	// auth := app.Group("/api/login")
-	// auth.Post("/v1", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
-	// auth.Post("/with-google", services.LoginWithGoogle)
-
-	// authSession := app.Group("/api/session").Use(middleware.Auth)
-	// authSession.Get("/get-session", services.GetSessionJWT)
-	// authSession.Get("/auth-key/:token", services.AuthByJWT)
-	// authSession.Get("/logout", services.LogoutWeb)
 }

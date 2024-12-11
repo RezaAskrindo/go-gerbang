@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -21,10 +20,8 @@ var ConfigPath = "./config/config-dev.json"
 var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
-	err := godotenv.Load(PathEnv)
-
-	if err != nil {
-		fmt.Print("Error loading .env file")
+	if err := godotenv.Load(PathEnv); err != nil {
+		panic("Error loading .env file")
 	}
 	return os.Getenv(key)
 }
@@ -45,12 +42,12 @@ var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 // var CookieKey = "FBsMP5oHv3EZS74jW1XnOVJRDmecc9F8"
 
 // DEV
-// var SecureCookies = false  //change true to prod false to dev
-// var CookieSameSite = "Lax" //change None to prod Lax to dev
+var SecureCookies = false  //change true to prod false to dev
+var CookieSameSite = "Lax" //change None to prod Lax to dev
 
 // PROD
-var SecureCookies = true    //change true to prod false to dev
-var CookieSameSite = "None" //change None to prod Lax to dev
+// var SecureCookies = true    //change true to prod false to dev
+// var CookieSameSite = "None" //change None to prod Lax to dev
 
 // SIKA REPOSITORY
 var SikaRepoURL = Config("SIKA_REPO_URL")

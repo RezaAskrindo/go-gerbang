@@ -9,47 +9,47 @@ import (
 )
 
 type User struct {
-	// IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id_account"`
-	IdAccount          string     `gorm:"type:uuid;primaryKey" json:"id_account"`
-	IdentityNumber     string     `gorm:"default:null;size:64" json:"identity_number"`
+	// IdAccount          string     `gorm:"type:uuid;primaryKey" json:"idAccount"`
+	IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"idAccount"`
+	IdentityNumber     string     `gorm:"default:null;size:64" json:"identityNumber"`
 	Username           string     `gorm:"not null;size:128" json:"username"`
-	FullName           string     `gorm:"not null;size:128" json:"full_name"`
+	FullName           string     `gorm:"not null;size:128" json:"fullName"`
 	Email              string     `gorm:"default:null;size:128" json:"email"`
-	PhoneNumber        string     `gorm:"default:null;size:13" json:"phone_number"`
-	DateOfBirth        *time.Time `gorm:"default:null" json:"date_of_birth"`
-	StatusAccount      int8       `gorm:"default:0" json:"status_account"`
-	AuthKey            string     `gorm:"default:null;size:32" json:"auth_key"`
+	PhoneNumber        string     `gorm:"default:null;size:13" json:"phoneNumber"`
+	DateOfBirth        *time.Time `gorm:"default:null" json:"dateOfBirth"`
+	StatusAccount      int8       `gorm:"default:0" json:"statusAccount"`
+	AuthKey            string     `gorm:"default:null;size:32" json:"authKey"`
 	PasswordHash       string     `gorm:"default:null;size:256"`
 	PasswordResetToken *string    `gorm:"default:null;size:256"`
 	AccessToken        *string    `gorm:"default:null;size:256"`
 	PinHash            *string    `gorm:"default:null;size:256"`
-	UsedPin            int8       `gorm:"default:0" json:"used_pin"`
-	IsGoogleAccount    int8       `gorm:"default:0" json:"is_google_account"`
-	LoginIp            string     `gorm:"default:null;size:32" json:"login_ip"`
-	LoginAttempts      int8       `gorm:"default:0" json:"login_attempts"`
-	LoginTime          int64      `gorm:"default:0" json:"login_time"`
-	CreatedAt          int        `gorm:"autoCreateTime:true" json:"created_at"`
-	UpdatedAt          int        `gorm:"default:0;autoCreateTime:false" json:"updated_at"`
+	UsedPin            int8       `gorm:"default:0" json:"usedPin"`
+	IsGoogleAccount    int8       `gorm:"default:0" json:"isGoogleAccount"`
+	LoginIp            string     `gorm:"default:null;size:32" json:"loginIp"`
+	LoginAttempts      int8       `gorm:"default:0" json:"loginAttempts"`
+	LoginTime          int64      `gorm:"default:0" json:"loginTime"`
+	CreatedAt          int        `gorm:"autoCreateTime:true" json:"createdAt"`
+	UpdatedAt          int        `gorm:"default:0;autoCreateTime:false" json:"updatedAt"`
 }
 
 type UserData struct {
-	// IdAccount       uuid.UUID  `json:"id_account"`
-	IdAccount       string     `json:"id_account"`
-	IdentityNumber  string     `json:"identity_number"`
+	// IdAccount       uuid.UUID  `json:"idAccount"`
+	IdAccount       string     `json:"idAccount"`
+	IdentityNumber  string     `json:"identityNumber"`
 	Username        string     `json:"username"`
-	FullName        string     `json:"full_name"`
+	FullName        string     `json:"fullName"`
 	Email           string     `json:"email"`
-	PhoneNumber     string     `json:"phone_number"`
-	DateOfBirth     *time.Time `json:"date_of_birth"`
-	StatusAccount   int8       `json:"status"`
-	AuthKey         string     `json:"auth_key"`
-	UsedPin         int8       `json:"used_pin"`
-	IsGoogleAccount int8       `json:"is_google_account"`
-	LoginIp         string     `json:"login_ip"`
-	LoginAttempts   int8       `json:"login_attempts"`
-	LoginTime       int64      `json:"login_time"`
-	CreatedAt       int        `json:"created_at"`
-	UpdatedAt       int        `json:"updated_at"`
+	PhoneNumber     string     `json:"phoneNumber"`
+	DateOfBirth     *time.Time `json:"dateOfBirth"`
+	StatusAccount   int8       `json:"statusAccount"`
+	AuthKey         string     `json:"authKey"`
+	UsedPin         int8       `json:"usedPin"`
+	IsGoogleAccount int8       `json:"isGoogleAccount"`
+	LoginIp         string     `json:"loginIp"`
+	LoginAttempts   int8       `json:"loginAttempts"`
+	LoginTime       int64      `json:"loginTime"`
+	CreatedAt       int        `json:"-"`
+	UpdatedAt       int        `json:"-"`
 }
 
 type UserDataResponse struct {
@@ -69,8 +69,8 @@ var STATUS_ACTIVE = 10
 // }
 
 func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
-	user.IdAccount = uuid.New().String()
-	// user.IdAccount = uuid.New()
+	// user.IdAccount = uuid.New().String()
+	user.IdAccount = uuid.New()
 
 	return nil
 }
@@ -100,7 +100,7 @@ func UpdateUser(accountId interface{}, data interface{}) *gorm.DB {
 }
 
 func BlockUser(accountId interface{}) *gorm.DB {
-	return database.GDB.Model(&User{}).Select("status").Where("id_account = ?", accountId).Update("status", 0)
+	return database.GDB.Model(&User{}).Select("status_account").Where("id_account = ?", accountId).Update("status_account", 0)
 }
 
 func UpdateUserPassword(accountId interface{}, data interface{}) *gorm.DB {

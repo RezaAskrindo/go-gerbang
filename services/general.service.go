@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"go-gerbang/config"
 	"go-gerbang/handlers"
 
@@ -15,7 +17,11 @@ import (
 // @Produce json
 // @Router /secure-gateway-c [get]
 func IndexService(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "ok"})
+	csrfToken, ok := c.Locals("token_csrf").(string)
+	if !ok {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
+	}
+	return handlers.SuccessResponse(c, "success getting csrf", csrfToken, nil)
 }
 
 func ProtectService(c *fiber.Ctx) error {

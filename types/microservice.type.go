@@ -16,8 +16,8 @@ type ConfigServices struct {
 
 type LoginInput struct {
 	Id       int    `json:"id"`
-	Identity string `json:"identity" example:"Muhammad Reza"`
-	Password string `json:"password" example:"12345"`
+	Identity string `json:"identity" example:"Muhammad Reza" validate:"required"`
+	Password string `json:"password" example:"12345" validate:"required"`
 	Captcha  int    `json:"captcha"`
 }
 
