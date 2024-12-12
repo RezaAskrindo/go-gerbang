@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"go-gerbang/config"
 	"go-gerbang/handlers"
@@ -37,7 +36,7 @@ func Login(c *fiber.Ctx) error {
 	input := new(types.LoginInput)
 
 	if err := handlers.ParseBody(c, input); err != nil {
-		return handlers.ParseBodyErrorResponse(c, err)
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
 	if err := handlers.ValidateStruct(*input); err != nil {
@@ -124,7 +123,7 @@ func Login(c *fiber.Ctx) error {
 	if validate_ip {
 		errValidate := handlers.ValidateUserLoginIp(user_data, c)
 		if errValidate != nil {
-			return handlers.SuccessResponse(c, errValidate.Error(), user_data, nil)
+			return handlers.SuccessResponse(c, true, errValidate.Error(), user_data, nil)
 		}
 	}
 
@@ -147,7 +146,7 @@ func Login(c *fiber.Ctx) error {
 			cookie.SessionOnly = false
 			c.Cookie(cookie)
 
-			return handlers.SuccessResponse(c, "Success Login for domain:"+domain, user_data, nil)
+			return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user_data, nil)
 		}
 	}
 
@@ -156,133 +155,136 @@ func Login(c *fiber.Ctx) error {
 		"token":    token,
 	}
 
-	return handlers.SuccessResponse(c, "Success Login", res, nil)
+	return handlers.SuccessResponse(c, true, "Success Login", res, nil)
 }
 
-func AuthByJWT(c *fiber.Ctx) error {
-	AuthKey := c.Params("token")
-	url := c.Query("url")
+func ValidateUserPasswordById(c *fiber.Ctx) error {
+	b := new(types.LoginInput)
 
-	if url == "" {
-		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("need url params"))
+	if err := handlers.ParseBody(c, b); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	user, err := models.FindUserById(b.Id)
+	if err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if user.PasswordHash != "" {
+		if !handlers.CheckPasswordHash(b.Password, user.PasswordHash) {
+			return handlers.UnauthorizedErrorResponse(c, err)
+		}
+	}
+
+	return handlers.SuccessResponse(c, true, "Password Is Valid", nil, nil)
+}
+
+func ChangePassword(c *fiber.Ctx) error {
+	b := new(types.ResetPasswordInput)
+
+	if err := handlers.ParseBody(c, b); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
 	user := new(models.User)
 
-	err := models.FindUserByAuthKey(user, AuthKey).Error
+	err := models.FindUserByIdRaw(user, b.Id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return handlers.NotFoundErrorResponse(c, fmt.Errorf("auth key is not found"))
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
-	currSession, err := middleware.SessionStore.Get(c)
-	if err != nil {
-		return handlers.InternalServerErrorResponse(c, err)
-	}
-	defer currSession.Save()
-
-	err = currSession.Regenerate()
-	if err != nil {
+	user.PasswordHash = handlers.GeneratePasswordHash(b.Password)
+	user.PasswordResetToken = nil
+	if err := models.UpdateUserPassword(user.IdAccount, user).Error; err != nil {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	userSession := currSession.Get("User")
-
-	if userSession == nil {
-		currSession.Set(middleware.UserId, user.IdAccount)
-		currSession.Set(middleware.AuthKey, user.AuthKey)
-		currSession.Set(middleware.Username, user.Username)
-
-		err := currSession.Save()
-		if err != nil {
-			return handlers.InternalServerErrorResponse(c, err)
-		}
-	}
-
-	redirectUrl := c.Query("redirectUrl")
-	if redirectUrl != "" {
-		return c.Redirect(redirectUrl)
-	}
-
-	return handlers.SuccessResponse(c, "current session", userSession, nil)
+	return handlers.SuccessResponse(c, true, "Change Password Is Success", nil, nil)
 }
 
-func GetSessionJWT(c *fiber.Ctx) error {
-	data := new(models.UserData)
-	data = &models.UserData{
-		IdAccount:       c.Locals("id_account").(string),
-		IdentityNumber:  c.Locals("identity_number").(string),
-		Username:        c.Locals("username").(string),
-		FullName:        c.Locals("full_name").(string),
-		Email:           c.Locals("email").(string),
-		PhoneNumber:     c.Locals("phone_number").(string),
-		DateOfBirth:     c.Locals("date_of_birth").(*time.Time),
-		AuthKey:         c.Locals("auth_key").(string),
-		UsedPin:         c.Locals("used_pin").(int8),
-		IsGoogleAccount: c.Locals("is_google_account").(int8),
-		StatusAccount:   c.Locals("status_account").(int8),
-		LoginIp:         c.Locals("login_ip").(string),
-		LoginAttempts:   c.Locals("login_attempts").(int8),
-		LoginTime:       c.Locals("login_time").(int64),
-		CreatedAt:       c.Locals("created_at").(int),
-		UpdatedAt:       c.Locals("updated_at").(int),
+func RequestResetPassword(c *fiber.Ctx) error {
+	input := new(types.LoginInput)
+
+	if err := handlers.ParseBody(c, input); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	// return c.JSON(fiber.Map{"success": true, "message": data})
-	return handlers.SuccessResponse(c, "Success Get JWT", data, nil)
-}
+	accountEmail := input.Identity
 
-func GetSession(c *fiber.Ctx) error {
-	currSession, err := middleware.SessionStore.Get(c)
+	user, err := models.FindUserByIdentity(accountEmail)
 	if err != nil {
-		return handlers.UnauthorizedErrorResponse(c, err)
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	if len(currSession.Keys()) > 0 {
+	randomReset := handlers.GenerateResetRandom(64)
 
-		userId, ok := currSession.Get(middleware.UserId).(string)
-		if !ok {
-			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("session userId is null"))
-		}
-		authKey, _ := currSession.Get(middleware.AuthKey).(string)
-		username, _ := currSession.Get(middleware.Username).(string)
-		fullName, _ := currSession.Get(middleware.FullName).(string)
-
-		data := new(models.UserData)
-		data = &models.UserData{
-			IdAccount: userId,
-			AuthKey:   authKey,
-			Username:  username,
-			FullName:  fullName,
-		}
-
-		return handlers.SuccessResponse(c, "success get session", data, nil)
+	if err := models.CeneratePasswordResetToken(user.IdAccount, randomReset).Error; err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	return handlers.SuccessResponse(c, "no session", nil, nil)
+	QuerySender := c.Query("sender")
+	QueryUrl := c.Query("url")
+
+	Sender := "Go Gerbang"
+	if QuerySender != "" {
+		Sender = QuerySender
+	}
+	BaseUrl := "//localhost"
+	if QueryUrl != "" {
+		BaseUrl = QueryUrl
+	}
+
+	sendEmail := new(types.SendingEmail)
+	sendEmail.Sender = Sender
+	sendEmail.Subject = "Reset Password"
+	sendEmail.Title = "You are request for reset password"
+	sendEmail.Body = "Yth " + user.FullName + " <br/> Mohon klik link di bawah ini untuk reset Password <br/><br/> <a href='" + BaseUrl + "/forget-password?token=" + randomReset + "'>reset link</a> <br/><br/> Link Ini aktif hanya dalam 24 Jam."
+	sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
+	sendEmail.Emails = []types.Email{
+		{
+			Name:      user.FullName,
+			EmailAddr: accountEmail,
+		},
+	}
+
+	go PublishServiceEmail(sendEmail)
+
+	return handlers.SuccessResponse(c, true, "Silahkan Cek Email", nil, nil)
 }
 
-func LogoutWeb(c *fiber.Ctx) error {
-	currSession, err := middleware.SessionStore.Get(c)
-	if err != nil {
-		return handlers.UnauthorizedErrorResponse(c, err)
+func ResetPassword(c *fiber.Ctx) error {
+	Token := c.Query("token")
+
+	if Token == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need token params"))
 	}
 
-	if err := currSession.Destroy(); err != nil {
-		return handlers.InternalServerErrorResponse(c, err)
+	user := new(models.User)
+
+	err := models.FindUserByPasswordReset(user, Token).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return handlers.NotFoundErrorResponse(c, fmt.Errorf("your token is not exist"))
 	}
 
-	currSession.SetExpiry(time.Second * -60)
-
-	cookieJWT := new(fiber.Cookie)
-	cookieJWT.Name = middleware.CookieJWT
-	// cookieJWT.Expires = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	cookieJWT.Expires = time.Now().Add(-(time.Hour * 2))
-	c.Cookie(cookieJWT)
-
-	redirectUrl := c.Query("redirectUrl")
-	if redirectUrl != "" {
-		return c.Redirect(redirectUrl)
+	if !handlers.IsPasswordResetTokenValid(Token) {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("your token is not valid anymore"))
 	}
 
-	return handlers.SuccessResponse(c, "success logout", currSession, nil)
+	input := new(types.ResetPasswordInput)
+
+	if err := handlers.ParseBody(c, input); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if err := handlers.ValidateStruct(*input); err != nil {
+		return c.Status(fiber.StatusOK).JSON(err)
+	}
+
+	user.PasswordHash = handlers.GeneratePasswordHash(input.Password)
+	user.PasswordResetToken = nil
+	if err := models.UpdateUserPassword(user.IdAccount, user).Error; err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
+	}
+
+	return handlers.SuccessResponse(c, true, "Reset Password Berhasil, Silahkan Login Kembali", nil, nil)
 }

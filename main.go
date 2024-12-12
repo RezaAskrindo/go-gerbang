@@ -4,16 +4,14 @@ import (
 	"log"
 	"time"
 
+	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
-	"go-gerbang/docs"
+	// "go-gerbang/docs"
 	"go-gerbang/middleware"
-
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 
-	"github.com/goccy/go-json"
-	// "github.com/gofiber/contrib/fiberzap/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -25,8 +23,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/gofiber/swagger"
+	// "github.com/gofiber/swagger"
+
+	// "github.com/gofiber/contrib/fiberzap/v2"
 	// "go.uber.org/zap"
+
+	"github.com/goccy/go-json"
 )
 
 const (
@@ -39,6 +41,13 @@ const (
 
 func main() {
 	database.ConnectGormDB()
+	broker.StartingNatsClient()
+
+	// natsServer, err := broker.StartingNatsServer()
+	// if err != nil {
+	// 	log.Fatalf("Error starting NATS server: %v", err)
+	// }
+	// defer natsServer.Shutdown()
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder:   json.Marshal,
@@ -51,16 +60,13 @@ func main() {
 		// DisableStartupMessage: true,
 		// Prefork:       true,
 	})
-
-	// defer app.Shutdown()
+	defer app.Shutdown()
 
 	app.Use(idempotency.New())
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.Config("ALLOW_ORIGINS"),
 		AllowCredentials: true,
-		// AllowOrigins: "*",
-		// AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
 	app.Use(helmet.New(helmet.Config{
@@ -105,17 +111,17 @@ func main() {
 	// 	Logger: logger,
 	// }))
 
-	docs.SwaggerInfo.Title = appName
-	docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
-	docs.SwaggerInfo.Version = "1.0"
-	docs.SwaggerInfo.Host = "localhost:" + config.Config("PORT_APIGATEWAY")
-	docs.SwaggerInfo.BasePath = "/"
+	// docs.SwaggerInfo.Title = appName
+	// docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
+	// docs.SwaggerInfo.Version = "1.0"
+	// docs.SwaggerInfo.Host = "localhost:" + config.Config("PORT_APIGATEWAY")
+	// docs.SwaggerInfo.BasePath = "/"
 
-	app.Get("/swagger/*", swagger.HandlerDefault)
+	// app.Get("/swagger/*", swagger.HandlerDefault)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Send([]byte("Welcome to GO GERBANG"))
-	})
+	// app.Get("/", func(c *fiber.Ctx) error {
+	// 	return c.Send([]byte("Welcome to GO GERBANG"))
+	// })
 
 	routes.MainRoutes(app)
 	routes.AuthRoutes(app)

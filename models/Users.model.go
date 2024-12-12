@@ -12,17 +12,17 @@ type User struct {
 	// IdAccount          string     `gorm:"type:uuid;primaryKey" json:"idAccount"`
 	IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"idAccount"`
 	IdentityNumber     string     `gorm:"default:null;size:64" json:"identityNumber"`
-	Username           string     `gorm:"not null;size:128" json:"username"`
-	FullName           string     `gorm:"not null;size:128" json:"fullName"`
+	Username           string     `gorm:"not null;size:128" json:"username" validate:"required"`
+	FullName           string     `gorm:"not null;size:128" json:"fullName" validate:"required"`
 	Email              string     `gorm:"default:null;size:128" json:"email"`
 	PhoneNumber        string     `gorm:"default:null;size:13" json:"phoneNumber"`
 	DateOfBirth        *time.Time `gorm:"default:null" json:"dateOfBirth"`
 	StatusAccount      int8       `gorm:"default:0" json:"statusAccount"`
 	AuthKey            string     `gorm:"default:null;size:32" json:"authKey"`
-	PasswordHash       string     `gorm:"default:null;size:256"`
-	PasswordResetToken *string    `gorm:"default:null;size:256"`
-	AccessToken        *string    `gorm:"default:null;size:256"`
-	PinHash            *string    `gorm:"default:null;size:256"`
+	PasswordHash       string     `gorm:"default:null;size:256" json:"-"`
+	PasswordResetToken *string    `gorm:"default:null;size:256" json:"-"`
+	AccessToken        *string    `gorm:"default:null;size:256" json:"-"`
+	PinHash            *string    `gorm:"default:null;size:256" json:"-"`
 	UsedPin            int8       `gorm:"default:0" json:"usedPin"`
 	IsGoogleAccount    int8       `gorm:"default:0" json:"isGoogleAccount"`
 	LoginIp            string     `gorm:"default:null;size:32" json:"loginIp"`
@@ -64,12 +64,7 @@ var STATUS_DELETED = 0
 var STATUS_INACTIVE = 9
 var STATUS_ACTIVE = 10
 
-// func (User) TableName() string {
-// 	return "user"
-// }
-
 func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
-	// user.IdAccount = uuid.New().String()
 	user.IdAccount = uuid.New()
 
 	return nil
@@ -79,8 +74,8 @@ func CreateUser(user *User) *gorm.DB {
 	return database.GDB.Create(user)
 }
 
-func CeneratePasswordResetToken(email interface{}, randomReset string) *gorm.DB {
-	return database.GDB.Model(&User{}).Where("email = ?", email).Update("password_reset_token", randomReset)
+func CeneratePasswordResetToken(idAccount interface{}, randomReset string) *gorm.DB {
+	return database.GDB.Model(&User{}).Where("id_account = ?", idAccount).Update("password_reset_token", randomReset)
 }
 
 func CenerateTimeBasedOneTimeTokenByEmail(email interface{}, TOTP string) *gorm.DB {
@@ -119,8 +114,8 @@ func FindUserByPasswordReset(dest interface{}, body string) *gorm.DB {
 	return database.GDB.Raw("SELECT * FROM users WHERE password_reset_token = ?", body).First(dest)
 }
 
-func FindUserByIdRaw(dest interface{}, body int) *gorm.DB {
-	return database.GDB.Raw("SELECT * FROM users WHERE id_account = ?", body).First(dest)
+func FindUserByIdRaw(dest interface{}, idAccount interface{}) *gorm.DB {
+	return database.GDB.Raw("SELECT * FROM users WHERE id_account = ? AND status_account = ?", idAccount, STATUS_ACTIVE).First(dest)
 }
 
 func FindUserById(accountId int) (*User, error) {

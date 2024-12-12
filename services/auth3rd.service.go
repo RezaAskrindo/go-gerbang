@@ -16,7 +16,7 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 	b := new(types.GoogleLogin)
 
 	if err := handlers.ParseBody(c, b); err != nil {
-		return handlers.ParseBodyErrorResponse(c, err)
+		return handlers.BadRequestErrorResponse(c, err)
 	}
 
 	tokenInfo, err := handlers.VerifyIdTokenGoogle(b.IdToken)

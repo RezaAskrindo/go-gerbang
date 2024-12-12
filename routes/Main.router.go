@@ -35,4 +35,10 @@ func MainRoutes(app *fiber.App) {
 			"admin": "9192",
 		},
 	}), services.InfoService)
+
+	// PUB / SUB
+	app.Post("/publish", services.PublishService)
+	app.Get("/subscribe", services.SubscribeService)
+
+	services.SubscribeServiceEmail()
 }

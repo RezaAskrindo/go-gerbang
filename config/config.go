@@ -8,7 +8,8 @@ import (
 )
 
 var BasePath = ""
-var ConfigPath = "./config/config-dev.json"
+
+// var ConfigPath = "./config/config-dev.json"
 
 // FOR LINUX USE FULL PATH
 // var BasePath = "/home/adminfra/sika/"
@@ -25,6 +26,8 @@ func Config(key string) string {
 	}
 	return os.Getenv(key)
 }
+
+var ConfigPath = Config("CONFIG_PATH_JSON")
 
 // DOMAINESIA 8060 IT 8070
 // var APP_PORT = ":8060"

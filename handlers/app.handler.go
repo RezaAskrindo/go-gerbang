@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 
 	"go-gerbang/types"
@@ -20,22 +21,12 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func ParseBody(ctx *fiber.Ctx, body interface{}) error {
-	if err := ctx.BodyParser(body); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  false,
-			"message": "Failed To Parse Body",
-		})
+func ParseBody(c *fiber.Ctx, body interface{}) error {
+	if err := c.BodyParser(body); err != nil {
+		return BadRequestErrorResponse(c, fmt.Errorf("Failed To Parse Body"))
 	}
 
 	return nil
-}
-
-func ParseBodyErrorResponse(c *fiber.Ctx, err error) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"status":  false,
-		"message": err.Error(),
-	})
 }
 
 func StructToMap(item interface{}) map[string]interface{} {
@@ -205,9 +196,9 @@ type ErrorStruct struct {
 	Code    int         `json:"code"`
 }
 
-func SuccessResponse(c *fiber.Ctx, message string, data interface{}, total *int64) error {
+func SuccessResponse(c *fiber.Ctx, status bool, message string, data interface{}, total *int64) error {
 	return c.Status(fiber.StatusOK).JSON(&SuccessStruct{
-		Status:  true,
+		Status:  status,
 		Message: message,
 		Data:    data,
 		Total:   total,
@@ -270,29 +261,37 @@ func NotFoundErrorResponse(c *fiber.Ctx, err error) error {
 	})
 }
 
-type ErrorResponse struct {
-	Field string `json:"field"`
-	Tag   string `json:"tag"`
-	Value string `json:"value"`
-	Desc  string `json:"desc"`
-}
-
 var validate = validator.New()
 
-func ValidateStruct(data interface{}) []*ErrorResponse {
-	var errors []*ErrorResponse
+func ValidateStruct(data interface{}) map[string]map[string]interface{} {
+	errors := make(map[string]map[string]interface{})
 
-	if err := validate.Struct(data); err != nil {
+	tagDescriptionValidation := map[string]string{
+		"required": "Tidak Boleh Kosong",
+		"email":    "Harus Email",
+	}
+
+	err := validate.Struct(data)
+	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
-			errors = append(errors, &ErrorResponse{
-				// Field: err.StructNamespace(),
-				Field: err.StructField(),
-				Tag:   err.Tag(),
-				Value: err.Param(),
-				Desc:  err.Error(),
-				// Desc:  "tidak boleh kosong",
-			})
+			errors[LowerFirstCase(err.StructField())] = map[string]interface{}{
+				"invalid": true,
+				"desc":    tagDescriptionValidation[err.Tag()],
+				"descRaw": err.Tag(),
+			}
 		}
 	}
+
+	if len(errors) == 0 {
+		return nil
+	}
+
 	return errors
+}
+
+func LowerFirstCase(str string) string {
+	if str == "" {
+		return ""
+	}
+	return strings.ToLower(string(str[0])) + str[1:]
 }

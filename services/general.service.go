@@ -21,7 +21,7 @@ func IndexService(c *fiber.Ctx) error {
 	if !ok {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
 	}
-	return handlers.SuccessResponse(c, "success getting csrf", csrfToken, nil)
+	return handlers.SuccessResponse(c, true, "success getting csrf", csrfToken, nil)
 }
 
 func ProtectService(c *fiber.Ctx) error {
