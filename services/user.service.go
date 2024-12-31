@@ -1,34 +1,24 @@
 package services
 
 import (
-	"errors"
+	"fmt"
 
-	// "go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 )
 
 func FindUserById(c *fiber.Ctx) error {
 	userId := c.Params("userId")
 
 	if userId == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(&handlers.ErrorStruct{
-			Message: "Need Params userId",
-			Status:  false,
-		})
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need userId params"))
 	}
 
 	user := new(models.User)
-
-	err := models.FindUserByIdRaw(user, userId).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return c.Status(fiber.StatusNotFound).JSON(&handlers.ErrorStruct{
-			Message: "User Not Found",
-			Status:  false,
-		})
+	if err := models.FindUserById(user, userId); err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
 	return handlers.SuccessResponse(c, true, "success to get users", user, nil)
@@ -56,10 +46,7 @@ func UpdateUser(c *fiber.Ctx) error {
 	userId := c.Params("userId")
 
 	if userId == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(&handlers.ErrorStruct{
-			Message: "Need Params userId",
-			Status:  false,
-		})
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need userId params"))
 	}
 
 	u := new(models.User)
@@ -77,4 +64,18 @@ func UpdateUser(c *fiber.Ctx) error {
 	}
 
 	return handlers.SuccessResponse(c, true, "success to update user", nil, nil)
+}
+
+func DeleteUser(c *fiber.Ctx) error {
+	userId := c.Params("userId")
+
+	if userId == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need userId params"))
+	}
+
+	if err := models.HardDeleteUser(userId); err != nil {
+		return handlers.NotFoundErrorResponse(c, err.Error)
+	}
+
+	return handlers.SuccessResponse(c, true, "success to delete user", nil, nil)
 }

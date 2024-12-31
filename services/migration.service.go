@@ -10,9 +10,10 @@ import (
 )
 
 func CheckMigrationStatus(c *fiber.Ctx) error {
-	_, err := models.FindUserByIdentity("admin")
+	user := new(models.User)
+	err := models.FindUserByIdentity(user, "admin", "admin", "admin", "admin")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": "Admin not found"})
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 	return c.JSON(fiber.Map{"success": true, "message": "Admin found"})
 }

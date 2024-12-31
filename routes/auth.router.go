@@ -12,8 +12,8 @@ func AuthRoutes(app *fiber.App) {
 
 	auth.Get("/logout", services.LogoutWeb)
 	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
-	auth.Post("/request-reset-password", services.RequestResetPassword)
-	auth.Post("/reset-password", services.ResetPassword)
+	auth.Post("/request-reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RequestResetPassword)
+	auth.Post("/reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ResetPassword)
 
 	auth.Get("/get-captcha", middleware.ValidateCaptcha, middleware.GenerateCaptcha)
 	auth.Get("/get-session", middleware.ValidateSession, services.GetSession)
@@ -27,4 +27,5 @@ func AuthRoutes(app *fiber.App) {
 	usersApi.Get("/:userId", services.FindUserById)
 	usersApi.Post("/", services.CreateUser)
 	usersApi.Put("/", services.UpdateUser)
+	usersApi.Delete("/:userId", services.DeleteUser)
 }

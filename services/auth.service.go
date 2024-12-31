@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"strconv"
@@ -14,6 +16,84 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
+
+func Signup(c *fiber.Ctx) error {
+	user := new(models.User)
+
+	if err := handlers.ParseBody(c, user); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if err := handlers.ValidateStruct(*user); err != nil {
+		return c.Status(fiber.StatusOK).JSON(err)
+	}
+
+	userExist := new(models.User)
+	if err := models.FindUserByIdentity(userExist, user.Username, user.Email, user.PhoneNumber, user.IdentityNumber); err == nil {
+		return handlers.SuccessResponse(c, false, "Account Already Exist", fiber.Map{
+			"username": fiber.Map{
+				"invalid": true,
+				"desc":    "This Account Already Exist",
+				"descRaw": "This Account Already Exist",
+			},
+		}, nil)
+	} // Reserve Algoritm
+
+	user.PasswordHash = handlers.GeneratePasswordHash(user.Password)
+
+	if err := models.CreateUser(user); err.Error != nil {
+		return handlers.ConflictErrorResponse(c, err.Error)
+	}
+
+	sendNotification := c.QueryBool("notif")
+	QuerySender := c.Query("sender")
+	BaseUrl := c.Query("url")
+
+	if sendNotification {
+		Sender := "Go Gerbang"
+		if QuerySender != "" {
+			Sender = QuerySender
+		}
+
+		if BaseUrl == "" {
+			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
+		}
+
+		sendEmail := new(types.SendingEmail)
+		sendEmail.Sender = Sender
+		sendEmail.Subject = "Akun Anda Berhasil Di Buat"
+		sendEmail.Title = "Berikut Informasi Akun Anda"
+		sendEmail.BodyText = `
+			Hi, ` + user.FullName + `, berikut informasi akun anda:
+
+			username: ` + user.FullName + `
+			password: ` + user.Password + `
+
+			Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.
+		`
+		sendEmail.Body = `
+			<p>Hi, ` + user.FullName + `, berikut informasi akun anda:</p>
+			<br/>
+			<br/>
+			<p>username: <strong>` + user.FullName + `</strong></p>
+			<p>password: <strong>` + user.Password + `</strong></p>
+			<br/>
+			<br/>
+			<p>Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</p>
+		`
+		sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
+		sendEmail.Emails = []types.Email{
+			{
+				Name:      user.FullName,
+				EmailAddr: user.Email,
+			},
+		}
+
+		go PublishServiceEmail(sendEmail)
+	}
+
+	return handlers.SuccessResponse(c, true, "Success Create User", nil, nil)
+}
 
 // @Summary Login
 // @Description Login Api Explaination
@@ -43,8 +123,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(err)
 	}
 
-	// CAPTCHA QUERY
-	if captcha {
+	if captcha { // CAPTCHA QUERY
 		sess, err := middleware.CaptchaStore.Get(c)
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
@@ -56,7 +135,7 @@ func Login(c *fiber.Ctx) error {
 		}
 
 		captcha := sessionCaptcha.(string)
-		intCaptcha, err := strconv.Atoi(captcha)
+		intCaptcha, _ := strconv.Atoi(captcha)
 
 		if input.Captcha != intCaptcha {
 			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid captcha"))
@@ -65,9 +144,9 @@ func Login(c *fiber.Ctx) error {
 
 	identity := input.Identity
 
-	user, err := models.FindUserByIdentity(identity)
-	if err != nil {
-		return handlers.BadRequestErrorResponse(c, fmt.Errorf("error on find user"))
+	user := new(models.User)
+	if err := models.FindUserByIdentity(user, identity, identity, identity, identity); err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
 	if user.StatusAccount == 0 {
@@ -78,12 +157,10 @@ func Login(c *fiber.Ctx) error {
 	u := new(models.User)
 
 	if user.PasswordHash != "" {
-		// passwordHash := *user.PasswordHash
 		if !handlers.CheckPasswordHash(password, user.PasswordHash) {
 			u.LoginAttempts = user.LoginAttempts + 1
 			u.LoginIp = c.IP()
-			// BLOCK Query
-			if block {
+			if block { // BLOCK Query
 				if user.LoginAttempts >= 3 {
 					models.BlockUser(user.IdAccount)
 					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
@@ -111,16 +188,14 @@ func Login(c *fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	// SESSION QUERY
-	if session {
+	if session { // SESSION QUERY
 		err := middleware.SaveUserSession(c, user_data, single_login) // SINGLE LOGIN
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
 	}
 
-	// VALIDATE IP QUERY
-	if validate_ip {
+	if validate_ip { // VALIDATE IP QUERY
 		errValidate := handlers.ValidateUserLoginIp(user_data, c)
 		if errValidate != nil {
 			return handlers.SuccessResponse(c, true, errValidate.Error(), user_data, nil)
@@ -132,9 +207,9 @@ func Login(c *fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	if httponly {
+	if httponly { // HTTPONLY QUERY
 		if domain == "" {
-			return fiber.NewError(fiber.StatusUnprocessableEntity, "For httponly need domain")
+			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
 		} else {
 			cookie := new(fiber.Cookie)
 			cookie.Name = middleware.CookieJWT
@@ -165,14 +240,14 @@ func ValidateUserPasswordById(c *fiber.Ctx) error {
 		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	user, err := models.FindUserById(b.Id)
-	if err != nil {
-		return handlers.BadRequestErrorResponse(c, err)
+	user := new(models.User)
+	if err := models.FindUserById(user, b.Id); err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
 	if user.PasswordHash != "" {
 		if !handlers.CheckPasswordHash(b.Password, user.PasswordHash) {
-			return handlers.UnauthorizedErrorResponse(c, err)
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your password is wrong"))
 		}
 	}
 
@@ -187,9 +262,7 @@ func ChangePassword(c *fiber.Ctx) error {
 	}
 
 	user := new(models.User)
-
-	err := models.FindUserByIdRaw(user, b.Id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := models.FindUserById(user, b.Id); err != nil {
 		return handlers.NotFoundErrorResponse(c, err)
 	}
 
@@ -211,9 +284,9 @@ func RequestResetPassword(c *fiber.Ctx) error {
 
 	accountEmail := input.Identity
 
-	user, err := models.FindUserByIdentity(accountEmail)
-	if err != nil {
-		return handlers.BadRequestErrorResponse(c, err)
+	user := new(models.User)
+	if err := models.FindUserByIdentity(user, accountEmail, accountEmail, accountEmail, accountEmail); err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
 	randomReset := handlers.GenerateResetRandom(64)
@@ -223,22 +296,37 @@ func RequestResetPassword(c *fiber.Ctx) error {
 	}
 
 	QuerySender := c.Query("sender")
-	QueryUrl := c.Query("url")
+	BaseUrl := c.Query("url")
 
 	Sender := "Go Gerbang"
 	if QuerySender != "" {
 		Sender = QuerySender
 	}
-	BaseUrl := "//localhost"
-	if QueryUrl != "" {
-		BaseUrl = QueryUrl
+
+	if BaseUrl == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
 	}
 
 	sendEmail := new(types.SendingEmail)
 	sendEmail.Sender = Sender
 	sendEmail.Subject = "Reset Password"
 	sendEmail.Title = "You are request for reset password"
-	sendEmail.Body = "Yth " + user.FullName + " <br/> Mohon klik link di bawah ini untuk reset Password <br/><br/> <a href='" + BaseUrl + "/forget-password?token=" + randomReset + "'>reset link</a> <br/><br/> Link Ini aktif hanya dalam 24 Jam."
+	sendEmail.BodyText = `Hi ` + user.FullName + `
+	
+		Mohon klik link di bawah ini untuk reset Password
+		
+		<a href='` + BaseUrl + `/forget-password?token=` + randomReset + ` '>reset link</a>
+		
+		Link Ini aktif hanya dalam 24 Jam.`
+	sendEmail.Body = `<p>Hi ` + user.FullName + `</p> 
+		<br/> 
+		<p>Mohon klik link di bawah ini untuk reset Password</p>
+		<br/>
+		<br/> 
+		<a href='` + BaseUrl + `/forget-password?token=` + randomReset + `'>reset link</a>
+		<br/>
+		<br/> 
+		<p>Link Ini aktif hanya dalam 24 Jam.</p>`
 	sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
 	sendEmail.Emails = []types.Email{
 		{
@@ -259,17 +347,6 @@ func ResetPassword(c *fiber.Ctx) error {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need token params"))
 	}
 
-	user := new(models.User)
-
-	err := models.FindUserByPasswordReset(user, Token).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return handlers.NotFoundErrorResponse(c, fmt.Errorf("your token is not exist"))
-	}
-
-	if !handlers.IsPasswordResetTokenValid(Token) {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("your token is not valid anymore"))
-	}
-
 	input := new(types.ResetPasswordInput)
 
 	if err := handlers.ParseBody(c, input); err != nil {
@@ -278,6 +355,32 @@ func ResetPassword(c *fiber.Ctx) error {
 
 	if err := handlers.ValidateStruct(*input); err != nil {
 		return c.Status(fiber.StatusOK).JSON(err)
+	}
+
+	apiKey := "Go_Gerbang_Is_Key"
+
+	if config.Config("RESET_PASSWORD_DEFAULT_KEY") != "" {
+		apiKey = config.Config("RESET_PASSWORD_DEFAULT_KEY")
+	}
+
+	user := new(models.User)
+
+	hashedAPIKey := sha256.Sum256([]byte(apiKey))
+	hashedKey := sha256.Sum256([]byte(Token))
+
+	if subtle.ConstantTimeCompare(hashedAPIKey[:], hashedKey[:]) == 1 {
+		if err := models.FindUserById(user, input.Id); err != nil {
+			return handlers.NotFoundErrorResponse(c, err)
+		}
+	} else { // if not found token
+		err := models.FindUserByPasswordReset(user, Token).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return handlers.NotFoundErrorResponse(c, fmt.Errorf("your token is not exist"))
+		}
+
+		if !handlers.IsPasswordResetTokenValid(Token) {
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("your token is not valid anymore"))
+		}
 	}
 
 	user.PasswordHash = handlers.GeneratePasswordHash(input.Password)

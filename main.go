@@ -1,34 +1,34 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
 	// "go-gerbang/docs"
-	"go-gerbang/middleware"
+	// "go-gerbang/middleware"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/earlydata"
 	"github.com/gofiber/fiber/v2/middleware/encryptcookie"
 	"github.com/gofiber/fiber/v2/middleware/etag"
+	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/idempotency"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	// "github.com/gofiber/swagger"
-
 	// "github.com/gofiber/contrib/fiberzap/v2"
 	// "go.uber.org/zap"
-
-	"github.com/goccy/go-json"
 )
 
 const (
@@ -40,6 +40,13 @@ const (
 // @contact.email m.reza911992@gmail.com
 
 func main() {
+	logFile, err := os.OpenFile("go-gerbang.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v\n", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	database.ConnectGormDB()
 	broker.StartingNatsClient()
 
@@ -50,17 +57,24 @@ func main() {
 	// defer natsServer.Shutdown()
 
 	app := fiber.New(fiber.Config{
-		JSONEncoder:   json.Marshal,
-		JSONDecoder:   json.Unmarshal,
-		BodyLimit:     100 * 1024 * 1024, // this is the default limit of 100MB
-		ServerHeader:  appName,
-		AppName:       appName,
-		CaseSensitive: true,
+		JSONEncoder:           json.Marshal,
+		JSONDecoder:           json.Unmarshal,
+		BodyLimit:             100 * 1024 * 1024, // this is the default limit of 100MB
+		ServerHeader:          appName,
+		AppName:               appName,
+		CaseSensitive:         true,
+		DisableStartupMessage: true,
 		// StrictRouting:         true,
-		// DisableStartupMessage: true,
 		// Prefork:       true,
 	})
-	defer app.Shutdown()
+	// defer app.Shutdown()c
+
+	app.Use(healthcheck.New(healthcheck.Config{
+		LivenessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		LivenessEndpoint: "/",
+	}))
 
 	app.Use(idempotency.New())
 
@@ -98,10 +112,6 @@ func main() {
 		},
 	}))
 
-	app.Use(compress.New(compress.Config{
-		Level: compress.LevelBestSpeed, // 1
-	}))
-
 	app.Use(earlydata.New())
 
 	// logger, _ := zap.NewProduction()
@@ -132,8 +142,10 @@ func main() {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 
-	log.Println("server running")
-	log.Fatal(app.Listen(config.Config("PORT_APIGATEWAY")))
+	fmt.Println("server running")
+	if err := app.Listen(config.Config("PORT_APIGATEWAY")); err != nil {
+		log.Fatalf("Error starting server: %v", err)
+	}
 
-	middleware.SessionStore.Storage.Close()
+	// middleware.SessionStore.Storage.Close()
 }

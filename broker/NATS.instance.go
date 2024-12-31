@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"fmt"
 	"log"
 
 	"go-gerbang/config"
@@ -32,6 +31,7 @@ import (
 
 var NatsClient *nats.Conn
 
+// StartingNatsClient initializes a connection to the NATS server using the URL from the configuration.
 func StartingNatsClient() {
 	serverURL := config.Config("NATS_SERVER_URL")
 
@@ -41,7 +41,5 @@ func StartingNatsClient() {
 		log.Printf("Error connecting to NATS server: %v", err)
 	}
 
-	fmt.Println("Connected to NATS server at:", serverURL)
-
-	// defer NatsClient.Close()
+	log.Printf("Connected to NATS server at:%s", serverURL)
 }

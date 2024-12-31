@@ -15,9 +15,9 @@ type ConfigServices struct {
 }
 
 type LoginInput struct {
-	Id       int    `json:"id"`
-	Identity string `json:"identity" example:"Muhammad Reza" validate:"required"`
-	Password string `json:"password" example:"12345" validate:"required"`
+	Id       string `json:"id"`
+	Identity string `json:"identity" validate:"required"`
+	Password string `json:"password" validate:"required"`
 	Captcha  int    `json:"captcha"`
 }
 
@@ -26,7 +26,7 @@ type GoogleLogin struct {
 }
 
 type ResetPasswordInput struct {
-	Id              int    `json:"id"`
+	Id              string `json:"id"`
 	Password        string `json:"password" validate:"required"`
 	PasswordConfirm string `json:"passwordConfirm" validate:"required"`
 }
@@ -45,10 +45,11 @@ type ListEmail struct {
 }
 
 type SendingEmail struct {
-	Sender  string  `json:"sender"`
-	Subject string  `json:"subject"`
-	Title   string  `json:"title"`
-	Body    string  `json:"body"`
-	Footer  string  `json:"footer"`
-	Emails  []Email `json:"emails"`
+	Sender   string  `json:"sender"`
+	Subject  string  `json:"subject"`
+	Title    string  `json:"title"`
+	BodyText string  `json:"bodyText"`
+	Body     string  `json:"body"`
+	Footer   string  `json:"footer"`
+	Emails   []Email `json:"emails"`
 }

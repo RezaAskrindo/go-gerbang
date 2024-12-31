@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -22,7 +23,8 @@ var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
 	if err := godotenv.Load(PathEnv); err != nil {
-		panic("Error loading .env file")
+		log.Printf("Error loading .env file or not define env:%s", key)
+		// panic("Error loading .env file")
 	}
 	return os.Getenv(key)
 }

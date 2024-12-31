@@ -72,7 +72,12 @@ func SubscribeServiceEmail() {
 		dataSend := new(types.ListEmail)
 		dataSend.Sender = email.Sender
 		dataSend.Subject = email.Subject
-		dataSend.BodyTemplateText = email.Title
+		dataSend.BodyTemplateText = email.Title + `
+		
+		` + email.Body + `
+		
+		
+		` + email.Footer
 		dataSend.BodyTemplateHtml = `<div style="margin: 0px; padding: 0px;" bgcolor="#FFFFFF">
 			<table width="100%" height="100%" style="min-width: 348px;" border="0" cellspacing="0" cellpadding="0" lang="en">
 				<tbody>

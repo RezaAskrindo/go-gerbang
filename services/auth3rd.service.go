@@ -24,9 +24,9 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "message": err.Error()})
 	}
 
-	user, err := models.FindUserByIdentity(tokenInfo.Email)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "message": err.Error()})
+	user := new(models.User)
+	if err := models.FindUserByIdentity(user, tokenInfo.Email, tokenInfo.Email, tokenInfo.Email, tokenInfo.Email); err != nil {
+		return handlers.NotFoundErrorResponse(c, err)
 	}
 
 	if user.StatusAccount == 0 {

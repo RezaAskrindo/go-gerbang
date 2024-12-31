@@ -1,8 +1,11 @@
 package models
 
 import (
-	"go-gerbang/database"
+	"errors"
+	"fmt"
 	"time"
+
+	"go-gerbang/database"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -19,6 +22,7 @@ type User struct {
 	DateOfBirth        *time.Time `gorm:"default:null" json:"dateOfBirth"`
 	StatusAccount      int8       `gorm:"default:0" json:"statusAccount"`
 	AuthKey            string     `gorm:"default:null;size:32" json:"authKey"`
+	Password           string     `json:"password"`
 	PasswordHash       string     `gorm:"default:null;size:256" json:"-"`
 	PasswordResetToken *string    `gorm:"default:null;size:256" json:"-"`
 	AccessToken        *string    `gorm:"default:null;size:256" json:"-"`
@@ -114,32 +118,22 @@ func FindUserByPasswordReset(dest interface{}, body string) *gorm.DB {
 	return database.GDB.Raw("SELECT * FROM users WHERE password_reset_token = ?", body).First(dest)
 }
 
-func FindUserByIdRaw(dest interface{}, idAccount interface{}) *gorm.DB {
-	return database.GDB.Raw("SELECT * FROM users WHERE id_account = ? AND status_account = ?", idAccount, STATUS_ACTIVE).First(dest)
+func FindUserById(dest interface{}, idAccount interface{}) error {
+	err := database.GDB.Raw("SELECT * FROM users WHERE id_account = ?", idAccount).First(dest).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("user is not found")
+	}
+
+	return nil
 }
 
-func FindUserById(accountId int) (*User, error) {
-	User := new(User)
-	if response := database.GDB.Where("id_account = ? AND users.status_account = ?", accountId, STATUS_ACTIVE).First(&User); response.Error != nil {
-		return nil, response.Error
+func FindUserByIdentity(dest interface{}, username interface{}, email interface{}, phoneNumber interface{}, identityNumber interface{}) error {
+	err := database.GDB.Raw("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone_number = ? OR identity_number = ?", username, email, phoneNumber, identityNumber).First(dest).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("user is not found")
 	}
-	// if User.IdAccount == "" {
-	// 	return User, errors.New("user not found")
-	// }
 
-	return User, nil
-}
-
-func FindUserByIdentity(identity string) (*User, error) {
-	User := new(User)
-	if response := database.GDB.Where("LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone_number = ? AND users.status_account = ?", identity, identity, identity, STATUS_ACTIVE).First(&User); response.Error != nil {
-		return nil, response.Error
-	}
-	// if User.IdAccount == "" {
-	// 	return User, errors.New("user not found")
-	// }
-
-	return User, nil
+	return nil
 }
 
 func FindUser(dest interface{}, conds ...interface{}) *gorm.DB {
@@ -152,4 +146,8 @@ func FindAllUser(dest interface{}) *gorm.DB {
 
 func FindUserDataById(dest interface{}, accountId interface{}) *gorm.DB {
 	return FindUser(dest, "id_account = ?", accountId)
+}
+
+func HardDeleteUser(idAccount interface{}) *gorm.DB {
+	return database.GDB.Unscoped().Delete(&User{}, "id_account = ?", idAccount)
 }
