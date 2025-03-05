@@ -1,16 +1,36 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainView from '../views/MainView.vue'
 import HomeView from '../views/HomeView.vue'
-import LoginView from '../views/LoginView.vue'
+import AuthView from '@/views/AuthView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/login',
-      name: 'login',
-      component: LoginView,
+      path: '/auth',
+      component: AuthView,
+      children: [
+        {
+          path: '',
+          redirect: { name: 'Login' }
+        },
+        {
+          path: 'login',
+          name: 'Login',
+          component: () => import('@/components/auth/LoginAuth.vue'),
+        },
+        {
+          path: 'sign-up',
+          name: 'Sign Up',
+          component: () => import('@/components/auth/SignUpUser.vue'),
+        },
+        {
+          path: 'reset-password',
+          name: 'Reset Password',
+          component: () => import('@/components/auth/ResetPassword.vue'),
+        },
+      ]
     },
     {
       path: '/',

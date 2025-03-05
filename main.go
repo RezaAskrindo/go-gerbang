@@ -9,6 +9,7 @@ import (
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
+
 	// "go-gerbang/docs"
 	// "go-gerbang/middleware"
 	"go-gerbang/proxyroute"
@@ -142,7 +143,7 @@ func main() {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 
-	fmt.Println("server running")
+	fmt.Println("server running " + config.Config("PORT_APIGATEWAY"))
 	if err := app.Listen(config.Config("PORT_APIGATEWAY")); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}

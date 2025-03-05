@@ -46,7 +46,7 @@ func MainProxyRoutes(app *fiber.App) {
 
 	err = json.Unmarshal([]byte(configProxyJSON), &handlers.MapMicroService)
 	if err != nil {
-		log.Fatalf("could not deserialize config: %w", err)
+		log.Fatalf("could not deserialize config: %v", err)
 	}
 
 	done := make(chan bool)
