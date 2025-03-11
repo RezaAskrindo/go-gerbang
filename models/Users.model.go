@@ -12,10 +12,9 @@ import (
 )
 
 type User struct {
-	// IdAccount          string     `gorm:"type:uuid;primaryKey" json:"idAccount"`
 	IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"idAccount"`
 	IdentityNumber     string     `gorm:"default:null;size:64" json:"identityNumber"`
-	Username           string     `gorm:"not null;size:128" json:"username" validate:"required"`
+	Username           string     `gorm:"not null;size:128;unique" json:"username" validate:"required"`
 	FullName           string     `gorm:"not null;size:128" json:"fullName" validate:"required"`
 	Email              string     `gorm:"default:null;size:128" json:"email"`
 	PhoneNumber        string     `gorm:"default:null;size:13" json:"phoneNumber"`
@@ -129,6 +128,9 @@ func FindUserById(dest interface{}, idAccount interface{}) error {
 
 func FindUserByIdentity(dest interface{}, username interface{}, email interface{}, phoneNumber interface{}, identityNumber interface{}) error {
 	err := database.GDB.Raw("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone_number = ? OR identity_number = ?", username, email, phoneNumber, identityNumber).First(dest).Error
+	if err != nil {
+		return err
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("user is not found")
 	}

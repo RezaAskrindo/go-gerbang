@@ -48,14 +48,14 @@ func main() {
 	defer logFile.Close()
 	log.SetOutput(logFile)
 
+	natsServer, err := broker.StartingNatsServer()
+	if err != nil {
+		log.Fatalf("Error starting NATS server: %v", err)
+	}
+	defer natsServer.Shutdown()
+
 	database.ConnectGormDB()
 	broker.StartingNatsClient()
-
-	// natsServer, err := broker.StartingNatsServer()
-	// if err != nil {
-	// 	log.Fatalf("Error starting NATS server: %v", err)
-	// }
-	// defer natsServer.Shutdown()
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder:           json.Marshal,
@@ -139,7 +139,7 @@ func main() {
 
 	proxyroute.MainProxyRoutes(app)
 
-	app.Use(func(c *fiber.Ctx) error {
+	app.Use("*", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 

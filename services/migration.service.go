@@ -3,6 +3,7 @@ package services
 import (
 	"go-gerbang/handlers"
 	"go-gerbang/models"
+	"log"
 
 	"go-gerbang/database"
 
@@ -26,14 +27,10 @@ func MigrationService(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "success migration"})
-	// database.GDB.AutoMigrate(&models.UserLogIp{})
-	// database.GDB.AutoMigrate(&models.AuthRule{})
-	// database.GDB.AutoMigrate(&models.UserAssignment{})
-	// database.GDB.Migrator().CreateTable(&models.User{})
-	// return nil
 }
 
 func MigrateAdminUser(c *fiber.Ctx) error {
+	log.Println("here")
 	if database.GDB.Migrator().HasTable(&models.User{}) {
 		errCreate := database.GDB.Create(&models.User{
 			Username:      "admin",
@@ -42,10 +39,13 @@ func MigrateAdminUser(c *fiber.Ctx) error {
 			PasswordHash:  handlers.GeneratePasswordHash("@dmin9192"),
 		})
 
-		if errCreate != nil {
-			return c.JSON(fiber.Map{"message": "failed to create admin", "error": errCreate})
+		if errCreate.Error != nil {
+			// IF ERROR CACHE, RUN THIS IN SQL:
+			// DISCARD ALL;
+			return c.JSON(fiber.Map{"message": "failed to create admin", "error": errCreate.Error})
 		}
+		return c.JSON(fiber.Map{"message": "success create admin"})
+	} else {
+		return c.JSON(fiber.Map{"message": "table user is not found"})
 	}
-
-	return c.JSON(fiber.Map{"message": "success create admin"})
 }

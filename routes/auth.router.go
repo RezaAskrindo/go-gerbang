@@ -24,6 +24,7 @@ func AuthRoutes(app *fiber.App) {
 	// authSession.Get("/auth-key/:token", services.AuthByJWT)
 
 	usersApi := app.Group("/users")
+	usersApi.Get("/all", services.GetAllUser)
 	usersApi.Get("/:userId", services.FindUserById)
 	usersApi.Post("/", services.CreateUser)
 	usersApi.Put("/", services.UpdateUser)

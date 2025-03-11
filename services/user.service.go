@@ -9,6 +9,19 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func GetAllUser(c *fiber.Ctx) error {
+	d := &[]models.UserData{}
+
+	err := models.FindAllUser(d).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Find All user Is Error"})
+	}
+
+	return c.JSON(&models.UserDataResponses{
+		Items: d,
+	})
+}
+
 func FindUserById(c *fiber.Ctx) error {
 	userId := c.Params("userId")
 

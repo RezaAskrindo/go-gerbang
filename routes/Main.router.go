@@ -6,9 +6,16 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
+
 	// "github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 )
+
+var baseConfig = basicauth.Config{
+	Users: map[string]string{
+		"admin": "@dmin9192",
+	},
+}
 
 func MainRoutes(app *fiber.App) {
 	// app.All("/info/*", filesystem.New(filesystem.Config{
@@ -28,17 +35,16 @@ func MainRoutes(app *fiber.App) {
 	// app.Get("/test-protect", middleware.Auth, services.ProtectService)
 
 	app.Get("/check-migration", services.CheckMigrationStatus)
-	app.Get("/migration", services.MigrationService)
+	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)
+	app.Get("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
 
-	app.Get("/info/micro-service", basicauth.New(basicauth.Config{
-		Users: map[string]string{
-			"admin": "9192",
-		},
-	}), services.InfoService)
+	app.Get("/info", basicauth.New(baseConfig), services.InfoService)
 
 	// PUB / SUB
 	app.Post("/publish", services.PublishService)
 	app.Get("/subscribe", services.SubscribeService)
+
+	app.Get("/send-mail", services.SendEmailHandler)
 
 	services.SubscribeServiceEmail()
 }

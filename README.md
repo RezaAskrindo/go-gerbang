@@ -20,3 +20,9 @@ untuk mengupdate swagger gunakan syntax berikut:
 ```bash
 swag init
 ```
+
+## Untuk push tanpa mengganti Git setup
+```bash
+git push https://github.com/RezaAskrindo/go-gerbang.git main
+```
+dimana main adalah <branch-name>
