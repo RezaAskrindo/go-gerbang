@@ -25,6 +25,9 @@ type GoogleLogin struct {
 	IdToken string `json:"id_token"`
 }
 
+type ResetPasswordRequest struct {
+	Identity string `json:"identity" validate:"required"`
+}
 type ResetPasswordInput struct {
 	Id              string `json:"id"`
 	Password        string `json:"password" validate:"required"`
@@ -44,7 +47,7 @@ type ListEmail struct {
 	Emails           []Email `json:"emails"`
 }
 
-type SendingEmail struct {
+type SendingEmailToBroker struct {
 	Sender   string  `json:"sender"`
 	Subject  string  `json:"subject"`
 	Title    string  `json:"title"`

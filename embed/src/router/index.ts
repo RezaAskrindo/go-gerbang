@@ -30,6 +30,11 @@ const router = createRouter({
           name: 'Reset Password',
           component: () => import('@/components/auth/ResetPassword.vue'),
         },
+        {
+          path: 'forget-password',
+          name: 'Forget Password',
+          component: () => import('@/components/auth/ForgetPassword.vue'),
+        },
       ]
     },
     {
@@ -46,12 +51,12 @@ const router = createRouter({
           name: 'about',
           component: () => import('../views/AboutView.vue'),
         },
-        {
-          path: '/:pathMatch(.*)*',
-          name: 'NotFound',
-          component: NotFoundView,
-        },
       ]
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: NotFoundView,
     },
   ],
 })

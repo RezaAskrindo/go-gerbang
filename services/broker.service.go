@@ -3,22 +3,17 @@ package services
 import (
 	"encoding/json"
 	"log"
-	"time"
 
 	"go-gerbang/broker"
-	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/types"
 
 	"github.com/gofiber/fiber/v2"
-
-	"github.com/valyala/fasthttp"
-
 	"github.com/nats-io/nats.go"
 )
 
 func PublishService(c *fiber.Ctx) error {
-	input := new(types.SendingEmail)
+	input := new(types.SendingEmailToBroker)
 	if err := handlers.ParseBody(c, input); err != nil {
 		return handlers.BadRequestErrorResponse(c, err)
 	}
@@ -45,7 +40,7 @@ func SubscribeService(c *fiber.Ctx) error {
 	return handlers.SuccessResponse(c, true, "on subscribe", subject, nil)
 }
 
-func PublishServiceEmail(input *types.SendingEmail) error {
+func PublishServiceEmail(input *types.SendingEmailToBroker) error {
 	messageBytes, err := json.Marshal(input)
 	if err != nil {
 		return err
@@ -62,7 +57,7 @@ func PublishServiceEmail(input *types.SendingEmail) error {
 func SubscribeServiceEmail() {
 	subject := "send_mail"
 	broker.NatsClient.Subscribe(subject, func(msg *nats.Msg) {
-		var email types.SendingEmail
+		var email types.SendingEmailToBroker
 
 		if err := json.Unmarshal(msg.Data, &email); err != nil {
 			log.Println("Failed to parse message data:", err)
@@ -74,7 +69,7 @@ func SubscribeServiceEmail() {
 		dataSend.Subject = email.Subject
 		dataSend.BodyTemplateText = email.Title + `
 		
-		` + email.Body + `
+		` + email.BodyText + `
 		
 		
 		` + email.Footer
@@ -97,14 +92,12 @@ func SubscribeServiceEmail() {
 														` + email.Title + `
 													</div>
 												</div>
-												<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); line-height: 20px; padding-top: 20px; text-align: left;">
+												<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); line-height: 20px; padding-top: 20px; text-align: center;">
 													` + email.Body + `
 												</div>
 											</div>
-											<div style="text-align: left;">
-												<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; color: rgba(0, 0, 0, 0.54); font-size: 11px; line-height: 18px; padding-top: 12px; text-align: center;">
-													` + email.Footer + `
-												</div>
+											<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; color: rgba(0, 0, 0, 0.54); font-size: 11px; line-height: 18px; padding-top: 12px; text-align: center;">
+												` + email.Footer + `
 											</div>
 										</td>
 										<td width="8" style="width: 8px;"></td>
@@ -121,20 +114,24 @@ func SubscribeServiceEmail() {
 		</div>`
 		dataSend.Emails = email.Emails
 
-		req := fasthttp.AcquireRequest()
-		res := fasthttp.AcquireResponse()
-		defer fasthttp.ReleaseRequest(req)
-		defer fasthttp.ReleaseResponse(res)
-
-		req.Header.SetContentType("application/json")
-		req.Header.SetMethod("POST")
-		data := handlers.ToMarshal(dataSend)
-		req.SetBody(data)
-		req.SetRequestURI(config.Config("EMAIL_SERVICE") + "/send-email")
-
-		if err := handlers.Client.DoTimeout(req, res, 300*time.Second); err != nil {
-			log.Printf("error %s\n", err)
+		if !SendMail(dataSend) {
+			log.Println("failed to send email")
 		}
+
+		// req := fasthttp.AcquireRequest()
+		// res := fasthttp.AcquireResponse()
+		// defer fasthttp.ReleaseRequest(req)
+		// defer fasthttp.ReleaseResponse(res)
+
+		// req.Header.SetContentType("application/json")
+		// req.Header.SetMethod("POST")
+		// data := handlers.ToMarshal(dataSend)
+		// req.SetBody(data)
+		// req.SetRequestURI(config.Config("EMAIL_SERVICE") + "/send-email")
+
+		// if err := handlers.Client.DoTimeout(req, res, 300*time.Second); err != nil {
+		// 	log.Printf("error %s\n", err)
+		// }
 
 		log.Println("Success Subscribe Message")
 	})

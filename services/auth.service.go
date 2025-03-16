@@ -59,12 +59,13 @@ func Signup(c *fiber.Ctx) error {
 			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
 		}
 
-		sendEmail := new(types.SendingEmail)
+		sendEmail := new(types.SendingEmailToBroker)
 		sendEmail.Sender = Sender
 		sendEmail.Subject = "Akun Anda Berhasil Di Buat"
 		sendEmail.Title = "Berikut Informasi Akun Anda"
 		sendEmail.BodyText = `
-			Hi, ` + user.FullName + `, berikut informasi akun anda:
+			Hi, ` + user.FullName + `, berikut inform
+			for reset password pleasasi akun anda:e click link below
 
 			username: ` + user.FullName + `
 			password: ` + user.Password + `
@@ -166,7 +167,7 @@ func Login(c *fiber.Ctx) error {
 					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
 				} else {
 					models.UpdateUser(user.IdAccount, u)
-					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
+					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("%s", "wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
 				}
 			} else {
 				models.UpdateUser(user.IdAccount, u)
@@ -307,27 +308,24 @@ func RequestResetPassword(c *fiber.Ctx) error {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
 	}
 
-	sendEmail := new(types.SendingEmail)
+	sendEmail := new(types.SendingEmailToBroker)
 	sendEmail.Sender = Sender
 	sendEmail.Subject = "Reset Password"
 	sendEmail.Title = "You are request for reset password"
 	sendEmail.BodyText = `Hi ` + user.FullName + `
 	
-		Mohon klik link di bawah ini untuk reset Password
+	for reset password please click link below:
 		
-		<a href='` + BaseUrl + `/forget-password?token=` + randomReset + ` '>reset link</a>
-		
-		Link Ini aktif hanya dalam 24 Jam.`
-	sendEmail.Body = `<p>Hi ` + user.FullName + `</p> 
-		<br/> 
-		<p>Mohon klik link di bawah ini untuk reset Password</p>
-		<br/>
-		<br/> 
-		<a href='` + BaseUrl + `/forget-password?token=` + randomReset + `'>reset link</a>
-		<br/>
-		<br/> 
-		<p>Link Ini aktif hanya dalam 24 Jam.</p>`
-	sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
+	` + BaseUrl + `/forget-password?token=` + randomReset + `
+
+	this link only active in 24 hours`
+	sendEmail.Body = `Hi ` + user.FullName + `<br/> 
+		for reset password please click link below:
+		<div style="padding-top:30px;padding-bottom:28px;text-align:center">
+			<a href='` + BaseUrl + `/forget-password?token=` + randomReset + `' style="font-family:'Google Sans',Roboto,RobotoDraft,Helvetica,Arial,sans-serif;line-height:16px;color:#ffffff;font-weight:400;text-decoration:none;font-size:14px;display:inline-block;padding:10px 24px;background-color:#171717;border-radius:5px;min-width:90px">Reset Link</a>
+		</div>
+		this link only active in 24 hours`
+	sendEmail.Footer = "you are receiving this mail from " + Sender
 	sendEmail.Emails = []types.Email{
 		{
 			Name:      user.FullName,

@@ -9,7 +9,7 @@
 
         <div class="grid gap-2">
           <Label>Username/Email</Label>
-          <Input v-model="form.identity" class="z-10" type="email" placeholder="Username/Email" required />
+          <Input v-model="form.identity" class="z-10" type="text" placeholder="Username/Email" required />
         </div>
         <div class="grid gap-2">
           <div class="flex items-center">
@@ -29,6 +29,12 @@
           Don't have an account?
           <RouterLink to="sign-up" class="underline underline-offset-4">
             Sign Up
+          </RouterLink>
+        </div>
+        <div class="text-center text-sm z-10">
+          Your account is not active yet?
+          <RouterLink to="sign-up" class="underline underline-offset-4">
+            Request to active
           </RouterLink>
         </div>
 
@@ -55,7 +61,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
-import { baseURL } from '@/stores/app.store';
+import { getCSRFToken, baseHost } from '@/stores/worker.service';
 
 import { 
   Card, 
@@ -68,7 +74,7 @@ import { Input } from '@/components/forms/input';
 import { Label } from '@/components/forms/label';
 import { Button } from '@/components/forms/button';
 
-// import { useFetch } from '@vueuse/core'
+import { toast } from 'vue-sonner'
 
 interface FormLogin {
   identity: string
@@ -76,41 +82,33 @@ interface FormLogin {
 }
 
 const form: FormLogin = reactive({
-  identity: '',
-  password: ''
+  identity: 'reza',
+  password: '9192'
 })
 
 async function submitLogin() {
-  console.log(form)
   try {
-    const urlCsrf = `${baseURL}/secure-gateway-c`;
-    const getCsrf = await fetch(urlCsrf, { credentials: 'include' });
-    // const getCsrf = getCSRFToken.value;
+    const getCsrf = await getCSRFToken();
 
-    if (!getCsrf.ok) {
-        return getCsrf.json();
+    const url = `${baseHost}/api/v1/auth/login?session=true&block=true&httponly=true&domain=localhost`;
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SGCsrf-Token': getCsrf?.data
+      },
+      body: JSON.stringify(form),
+    });
+    
+    let result
+    
+    if (!response.ok) {
+      result = await response.json();
+      toast.error(result?.message);
     } else {
-      const csrfToken = await getCsrf.json();
-
-      const url = `${baseURL}/api/v1/auth/login?session=true&block=true&httponly=true&domain=localhost`;
-      const response = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-SGCsrf-Token': csrfToken?.data
-        },
-        body: JSON.stringify(form),
-      });
-      
-      if (!response.ok) {
-        return response.json();
-      }
-  
-      const result = await response.json();
-
-      return result;
-
+      result = await response.json();
+      toast.error(result?.message);
     }
   } catch (error) {
     console.log(error)

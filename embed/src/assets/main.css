@@ -1,5 +1,9 @@
 @import './tailwind.css';
 
+html, body, #app {
+  height: 100%;
+}
+
 .line-border::before, .line-border::after {
   content: "";
   position: absolute;

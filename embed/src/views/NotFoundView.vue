@@ -1,15 +1,7 @@
 <template>
-  <div class="about">
-    <h1>404 | Not Found</h1>
+  <div class="flex min-h-svh w-full items-center justify-center">
+    <div class="w-full max-w-sm ">
+      <div class="font-semibold text-xl text-center">404 | Not Found</div>
+    </div>
   </div>
 </template>
-
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-</style>

@@ -44,7 +44,9 @@ func MainRoutes(app *fiber.App) {
 	app.Post("/publish", services.PublishService)
 	app.Get("/subscribe", services.SubscribeService)
 
-	app.Get("/send-mail", services.SendEmailHandler)
+	// MAIL
+	app.Get("/check-mail", services.MailTesting)
+	// app.Get("/send-mail", services.SendEmailHandler)
 
 	services.SubscribeServiceEmail()
 }

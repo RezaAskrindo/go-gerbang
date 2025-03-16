@@ -9,11 +9,11 @@
 
         <div class="grid gap-2">
           <Label>Username</Label>
-          <Input v-model="form.username" type="text" placeholder="Username" required />
+          <Input v-model="form.username" @input="removeSpaces" type="text" placeholder="Username" required />
         </div>
         <div class="grid gap-2">
           <Label>Full Name</Label>
-          <Input v-model="form.full_name" type="text" placeholder="Full Name" required />
+          <Input v-model="form.fullName" type="text" placeholder="Full Name" required />
         </div>
         <div class="grid gap-2">
           <Label>Email</Label>
@@ -21,11 +21,15 @@
         </div>
         <div class="grid gap-2">
           <Label>Phone Number</Label>
-          <Input v-model="form.phone_number" type="text" placeholder="Phone Number" required />
+          <Input v-model="form.phoneNumber" type="text" placeholder="Phone Number" required />
         </div>
         <div class="grid gap-2">
           <Label>Password</Label>
           <Input v-model="form.password" type="password" placeholder="Password" required />
+        </div>
+        <div class="grid gap-2">
+          <Label>Ulangi Password</Label>
+          <Input v-model="form.password_repeat" type="password" placeholder="Password" required />
         </div>
 
         <div style="display: flex; justify-content: center;">
@@ -39,6 +43,8 @@
           </RouterLink>
         </div>
 
+        <!-- {{route}} -->
+
       </form>
     </CardContent>
   </Card>
@@ -46,6 +52,8 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
+import { useRoute } from 'vue-router';
+import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
   Card, 
   CardDescription, 
@@ -57,37 +65,63 @@ import { Input } from '@/components/forms/input';
 import { Label } from '@/components/forms/label';
 import { Button } from '@/components/forms/button';
 
+import { toast } from 'vue-sonner'
+
 interface FormLogin {
   username: string
-  full_name: string
+  fullName: string
   email: string
-  phone_number: string
+  phoneNumber: string
   password: string
+  password_repeat: string
 }
 
+const route = useRoute();
+
 const form: FormLogin = reactive({
-  username: '',
-  full_name: '',
-  email: '',
-  phone_number: '',
-  password: '',
+  username: 'reza',
+  fullName: 'Muhammad Reza',
+  email: 'rezamac9192@gmail.com',
+  phoneNumber: '011111',
+  password: '9192',
+  password_repeat: ''
 })
 
+const removeSpaces = () => {
+  form.username = form.username.replace(/[^a-zA-Z0-9]/g, '');
+};
+
 async function submitLogin() {
-  // console.log(form)
-  // try {
-  //   const response = await fetch(url, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify(form),
-  //   });
+  if (form.password !== form.password_repeat) {
+    toast.error("You're Password Not Equal");
+    return '';
+  }
 
+  try {
+    const getCsrf = await getCSRFToken();
 
-  // } catch (error) {
+    const response = await fetch(`${baseHost}/api/v1/auth/sign-up`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SGCsrf-Token': getCsrf?.data
+      },
+      body: JSON.stringify(form),
+    });
+
+    let result
     
-  // }
+    if (!response.ok) {
+      result = await response.json();
+      toast.error(result?.message);
+    } else {
+      result = await response.json();
+      toast.error(result?.message);
+    }
+  } catch(err) {
+    console.error('Error:', err);
+  }
 }
 
 </script>

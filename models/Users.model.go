@@ -21,7 +21,7 @@ type User struct {
 	DateOfBirth        *time.Time `gorm:"default:null" json:"dateOfBirth"`
 	StatusAccount      int8       `gorm:"default:0" json:"statusAccount"`
 	AuthKey            string     `gorm:"default:null;size:32" json:"authKey"`
-	Password           string     `json:"password"`
+	Password           string     `gorm:"-" json:"password"`
 	PasswordHash       string     `gorm:"default:null;size:256" json:"-"`
 	PasswordResetToken *string    `gorm:"default:null;size:256" json:"-"`
 	AccessToken        *string    `gorm:"default:null;size:256" json:"-"`

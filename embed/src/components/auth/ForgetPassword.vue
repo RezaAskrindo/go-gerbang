@@ -1,19 +1,24 @@
 <template>
   <Card>
     <CardHeader>
-      <CardTitle class="text-center">RESET</CardTitle>
-      <CardDescription class="text-center">Get Link Reset Password</CardDescription>
+      <CardTitle class="text-center">New Password</CardTitle>
+      <CardDescription class="text-center">Fill New Password</CardDescription>
     </CardHeader>
     <CardContent>
       <form @submit.prevent="submitLogin" class="grid gap-4">
 
         <div class="grid gap-2">
-          <Label>Username/Email</Label>
-          <Input v-model="form.identity" class="z-10" type="text" placeholder="Username/Email" required />
+          <Label>New Password</Label>
+          <Input v-model="form.password" class="z-10" type="password" placeholder="New Password" required />
+        </div>
+
+        <div class="grid gap-2">
+          <Label>Repeat Password</Label>
+          <Input v-model="form.passwordConfirm" class="z-10" type="password" placeholder="Repeat Password" required />
         </div>
 
         <div class="flex justify-center">
-          <Button class="w-full" type="submit">Send</Button>
+          <Button class="w-full" type="submit">Update Password</Button>
         </div>
 
         <div class="text-center text-sm">
@@ -29,7 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
   Card, 
@@ -45,18 +51,22 @@ import { Button } from '@/components/forms/button';
 import { toast } from 'vue-sonner'
 
 interface ResetPassword {
-  identity: string
+  password: string
+  passwordConfirm: string
 }
 
+const route = useRoute();
+
 const form: ResetPassword = reactive({
-  identity: '',
+  password: '',
+  passwordConfirm: '',
 })
 
 async function submitLogin() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password?url=http://localhost:3000/auth&sender=Siskor`, {
+    const response = await fetch(`${baseHost}/api/v1/auth/reset-password?token=${route.query?.token}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -79,5 +89,9 @@ async function submitLogin() {
     console.error('Error:', err);
   }
 }
+
+onMounted(() => {
+  console.log(route.query?.token)
+})
 
 </script>
