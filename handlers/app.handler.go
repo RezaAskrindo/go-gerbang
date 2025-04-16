@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"reflect"
@@ -14,7 +13,7 @@ import (
 
 	"go-gerbang/types"
 
-	"github.com/fsnotify/fsnotify"
+	// "github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -107,80 +106,42 @@ func LoadConfig(filename string) (*types.ConfigServices, error) {
 	}
 
 	return &config, nil
-	// FROM CHATGPT
-	// for retries := 0; retries < 3; retries++ {
-	// 	// Open the file
-	// 	file, err := os.Open(filename)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("could not open config file: %w", err)
-	// 	}
-
-	// 	info, err := file.Stat()
-	// 	if err != nil {
-	// 		file.Close()
-	// 		return nil, fmt.Errorf("could not stat config file: %w", err)
-	// 	}
-	// 	if info.Size() == 0 {
-	// 		file.Close()
-	// 		if retries < 2 {
-	// 			time.Sleep(500 * time.Millisecond)
-	// 			continue
-	// 		}
-	// 		return nil, errors.New("config file is empty")
-	// 	}
-
-	// 	var config types.ConfigServices
-	// 	decoder := json.NewDecoder(file)
-	// 	err = decoder.Decode(&config)
-	// 	file.Close()
-
-	// 	if err != nil {
-	// 		if retries < 2 {
-	// 			time.Sleep(500 * time.Millisecond)
-	// 			continue
-	// 		}
-	// 		return nil, fmt.Errorf("could not decode config file: %w", err)
-	// 	}
-
-	// 	return &config, nil
-	// }
-
-	// return nil, errors.New("failed to load config after multiple attempts")
 }
 
-func WatchConfigFile(filename string, done chan bool) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatalf("Error creating file watcher: %v", err)
-	}
-	defer watcher.Close()
+// NOT WORKING
+// func WatchConfigFile(filename string, done chan bool) {
+// 	watcher, err := fsnotify.NewWatcher()
+// 	if err != nil {
+// 		log.Fatalf("Error creating file watcher: %v", err)
+// 	}
+// 	defer watcher.Close()
 
-	err = watcher.Add(filename)
-	if err != nil {
-		log.Fatalf("Error adding file to watcher: %v", err)
-	}
+// 	err = watcher.Add(filename)
+// 	if err != nil {
+// 		log.Fatalf("Error adding file to watcher: %v", err)
+// 	}
 
-	for {
-		select {
-		case <-done:
-			return
-		case event := <-watcher.Events:
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				log.Println("Config file modified, reloading...")
-				newConfig, err := LoadConfig(filename)
-				if err == nil {
-					MapMicroService = newConfig
-					// SaveToRedis("proxy-route", newConfig)
-					log.Println("Config reloaded successfully")
-				} else {
-					log.Printf("Error reloading config: %v", err)
-				}
-			}
-		case err := <-watcher.Errors:
-			log.Printf("Watcher error: %v", err)
-		}
-	}
-}
+// 	for {
+// 		select {
+// 		case <-done:
+// 			return
+// 		case event := <-watcher.Events:
+// 			if event.Op&fsnotify.Write == fsnotify.Write {
+// 				log.Println("Config file modified, reloading...")
+// 				newConfig, err := LoadConfig(filename)
+// 				if err == nil {
+// 					MapMicroService = newConfig
+// 					// SaveToRedis("proxy-route", newConfig)
+// 					log.Println("Config reloaded successfully")
+// 				} else {
+// 					log.Printf("Error reloading config: %v", err)
+// 				}
+// 			}
+// 		case err := <-watcher.Errors:
+// 			log.Printf("Watcher error: %v", err)
+// 		}
+// 	}
+// }
 
 // Response
 type SuccessStruct struct {

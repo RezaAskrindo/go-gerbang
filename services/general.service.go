@@ -35,9 +35,6 @@ func InfoService(c *fiber.Ctx) error {
 		return err
 	}
 
-	done := make(chan bool)
-	go handlers.WatchConfigFile(config.BasePath+config.ConfigPath, done)
-
 	for i := range handlers.MapMicroService.Services {
 		req := fasthttp.AcquireRequest()
 		res := fasthttp.AcquireResponse()

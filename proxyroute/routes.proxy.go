@@ -1,56 +1,54 @@
 package proxyroute
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
 	"go-gerbang/config"
-	"go-gerbang/database"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
+	"go-gerbang/types"
 
+	"github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/proxy"
 	"github.com/valyala/fasthttp"
 )
 
 func MainProxyRoutes(app *fiber.App) {
-	// file, err := os.Open(config.BasePath + config.ConfigPath)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer file.Close()
-
-	// var MapMicroService []types.Service
-	// err = json.NewDecoder(file).Decode(&MapMicroService)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	var err error
-	// handlers.MapMicroService, err = handlers.LoadConfig(config.BasePath + config.ConfigPath)
-	configProxy, err := handlers.LoadConfig(config.BasePath + config.ConfigPath)
+
+	// USING FILE
+	handlers.MapMicroService, err = handlers.LoadConfig(config.BasePath + config.ConfigPath)
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
-	handlers.SaveToRedis("proxy-route", configProxy)
+	// BEGIN USING REDIS
+	// configProxy, err := handlers.LoadConfig(config.BasePath + config.ConfigPath)
+	// if err != nil {
+	// 	log.Fatalf("Error loading config: %v", err)
+	// }
 
-	configProxyJSON, err := database.RedisDb.Get(handlers.Ctx, "proxy-route").Result()
-	if err != nil {
-		log.Fatalf("Error loading redis: %v", err)
-	}
+	// handlers.SaveToRedis("proxy-route", configProxy)
 
-	err = json.Unmarshal([]byte(configProxyJSON), &handlers.MapMicroService)
-	if err != nil {
-		log.Fatalf("could not deserialize config: %v", err)
-	}
+	// configProxyJSON, err := database.RedisDb.Get(handlers.Ctx, "proxy-route").Result()
+	// if err != nil {
+	// 	log.Fatalf("Error loading redis: %v", err)
+	// }
 
-	done := make(chan bool)
-	go handlers.WatchConfigFile(config.BasePath+config.ConfigPath, done)
+	// err = json.Unmarshal([]byte(configProxyJSON), &handlers.MapMicroService)
+	// if err != nil {
+	// 	log.Fatalf("could not deserialize config: %v", err)
+	// }
+	// END USING REDIS
+
+	// WATCH CONFIG FILE
+	// done := make(chan bool)
+	// go handlers.WatchConfigFile(config.BasePath+config.ConfigPath, done)
 
 	RegisterRoutes(app)
 }
@@ -64,73 +62,45 @@ func RegisterRoutes(app *fiber.App) {
 		DisablePathNormalizing:   true,
 	})
 
-	for _, data := range handlers.MapMicroService.Services {
-		if data.AuthProtection && data.CsrfProtection {
-			app.Use(data.Path, middleware.CsrfProtection, middleware.Auth, func(c *fiber.Ctx) error {
-				path := c.OriginalURL()
-				params := strings.TrimPrefix(path, data.Path)
-				url := data.Url + params
+	// RBAC PROTECTION
+	authz := casbin.New(casbin.Config{
+		Lookup: func(c *fiber.Ctx) string {
+			statusAccount, ok := c.Locals("status_account").(int8)
+			if !ok {
+				return ""
+			}
+			sub := strconv.Itoa(int(statusAccount))
 
-				if err := proxy.DoTimeout(c, url, 30*time.Second); err != nil {
-					log.Println("Error: %s\n", err.Error())
-					return handlers.InternalServerErrorResponse(c, fmt.Errorf("endpoint is not running"))
-				}
+			return sub
+		},
+		Unauthorized: func(c *fiber.Ctx) error {
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have access"))
+		},
+	})
 
-				c.Response().Header.Del(fiber.HeaderServer)
-				return nil
-			})
+	for _, service := range handlers.MapMicroService.Services {
+		if service.AuthProtection && service.CsrfProtection && service.RbacProtection {
+			app.Use(service.Path, middleware.CsrfProtection, middleware.Auth, authz.RoutePermission(), proxyHandler(service))
+		} else if service.AuthProtection && service.CsrfProtection {
+			app.Use(service.Path, middleware.CsrfProtection, middleware.Auth, proxyHandler(service))
 		} else {
-			app.Use(data.Path, func(c *fiber.Ctx) error {
-				path := c.OriginalURL()
-				params := strings.TrimPrefix(path, data.Path)
-				url := data.Url + params
-
-				if err := proxy.Do(c, url); err != nil {
-					log.Println("Error: %s\n", err.Error())
-					return handlers.InternalServerErrorResponse(c, fmt.Errorf("endpoint is not running"))
-				}
-
-				c.Response().Header.Del(fiber.HeaderServer)
-				return nil
-			})
+			app.Use(service.Path, proxyHandler(service))
 		}
 	}
 }
 
-func RegisterDynamicRoutes(app *fiber.App) {
-	app.Use(func(c *fiber.Ctx) error {
-		handlers.MapMicroServiceMutex.RLock()
-		defer handlers.MapMicroServiceMutex.RUnlock()
+func proxyHandler(service types.Service) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		path := c.OriginalURL()
+		params := strings.TrimPrefix(path, service.Path)
+		url := service.Url + params
 
-		for _, data := range handlers.MapMicroService.Services {
-			if strings.HasPrefix(c.OriginalURL(), data.Path) {
-				params := strings.TrimPrefix(c.OriginalURL(), data.Path)
-				url := data.Url + params
-
-				log.Println(data.AuthProtection)
-
-				// if data.AuthProtection {
-				// Apply AuthProtection and CsrfProtection
-				// if err := middleware.CsrfProtection(c); err != nil {
-				// 	return err
-				// }
-				// if err := middleware.Auth(c); err != nil {
-				// 	return err
-				// }
-				// }
-				middleware.Auth(c)
-
-				// Proxy request
-				if err := proxy.DoTimeout(c, url, 30*time.Second); err != nil {
-					log.Println("Error: %s\n", err.Error())
-					return handlers.InternalServerErrorResponse(c, fmt.Errorf("endpoint is not running"))
-				}
-
-				// c.Response().Header.Del(fiber.HeaderServer)
-				return nil
-			}
+		if err := proxy.DoTimeout(c, url, 30*time.Second); err != nil {
+			log.Printf("error: %s\n", err.Error())
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("endpoint is not running"))
 		}
 
-		return c.Next() // If no matching route, proceed to the next middleware
-	})
+		c.Response().Header.Del(fiber.HeaderServer)
+		return nil
+	}
 }

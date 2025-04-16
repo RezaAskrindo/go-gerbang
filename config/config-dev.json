@@ -3,14 +3,16 @@
     {
       "path": "/api/grc/risk-report/",
       "url": "http://localhost:8060/",
-      "auth_protection": false,
-      "csrf_protection": false
+      "auth_protection": true,
+      "csrf_protection": true,
+      "rbac_protection": true
     },
     {
       "path": "/api/grc/master/",
       "url": "http://localhost:8070/",
-      "auth_protection": false,
-      "csrf_protection": false
+      "auth_protection": true,
+      "csrf_protection": true,
+      "rbac_protection": true
     }
   ]
 }

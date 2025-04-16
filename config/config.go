@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var BasePath = ""
+var BasePath = "."
 
 // var ConfigPath = "./config/config-dev.json"
 
@@ -19,7 +19,7 @@ var BasePath = ""
 // var BasePath = "/home/siasura1/golangapp/"
 // var ConfigPath = "config/config.json"
 
-var PathEnv = BasePath + ".env"
+var PathEnv = BasePath + "env"
 
 func Config(key string) string {
 	if err := godotenv.Load(PathEnv); err != nil {

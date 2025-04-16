@@ -11,7 +11,6 @@ import (
 	"go-gerbang/database"
 
 	// "go-gerbang/docs"
-	// "go-gerbang/middleware"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 

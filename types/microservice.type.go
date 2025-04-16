@@ -7,6 +7,7 @@ type Service struct {
 	CsrfProtection    bool   `json:"csrf_protection"`
 	SessionProtection bool   `json:"session_protection"`
 	JwtProtection     bool   `json:"jwt_protection"`
+	RbacProtection    bool   `json:"rbac_protection"`
 	Status            bool   `json:"status"`
 }
 

@@ -31,8 +31,8 @@ type User struct {
 	LoginIp            string     `gorm:"default:null;size:32" json:"loginIp"`
 	LoginAttempts      int8       `gorm:"default:0" json:"loginAttempts"`
 	LoginTime          int64      `gorm:"default:0" json:"loginTime"`
-	CreatedAt          int        `gorm:"autoCreateTime:true" json:"createdAt"`
-	UpdatedAt          int        `gorm:"default:0;autoCreateTime:false" json:"updatedAt"`
+	CreatedAt          int        `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt          int        `gorm:"default:0;autoUpdateTime" json:"updatedAt"`
 }
 
 type UserData struct {

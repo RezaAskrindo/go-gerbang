@@ -13,16 +13,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/gofiber/storage/redis/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
+	// "github.com/gofiber/storage/redis/v3"
 )
 
 // DOMAINESIA NOT SUPPORT
-// var StorageRedis = redis.New(redis.Config{
-// 	URL: config.Config("REDIS_ADDRESS_FULL"),
-// })
-var StorageRedisFiber = redis.New()
+//
+//	var StorageRedis = redis.New(redis.Config{
+//		URL: config.Config("REDIS_ADDRESS_FULL"),
+//	})
+// var StorageRedisFiber = redis.New()
 
 const (
 	UserId        = "userId"
@@ -40,7 +41,7 @@ var SessionStore = session.New(session.Config{
 	CookieHTTPOnly: true,
 	CookieSecure:   config.SecureCookies,
 	CookieSameSite: config.CookieSameSite,
-	Storage:        StorageRedisFiber,
+	// Storage:        StorageRedisFiber,
 	// KeyGenerator: func() string {
 	// 	return handlers.RandomString(8)
 	// },
@@ -130,10 +131,6 @@ func Auth(c *fiber.Ctx) error {
 	user, err := Verify(chunks[1])
 	if err != nil {
 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid or expired JWT"))
-	}
-
-	if err := RoleAccessChecking(c, user); err != nil {
-		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have authorized"))
 	}
 
 	c.Locals("id_account", user.IdAccount)
@@ -332,64 +329,4 @@ func GenerateCaptcha(c *fiber.Ctx) error {
 	output := data.WriteImage(c)
 
 	return output
-}
-
-func RoleAccessChecking(c *fiber.Ctx, user *models.UserData) error {
-	// RbacConfigs := &types.AuthRoleRouteResponses{}
-	// val, err := handlers.Cache.Get(handlers.Ctx, "sika-auth-role-route").Bytes()
-	// if err != nil {
-	// 	rows, err := database.DBNOORM.Query("SELECT role_access, route, method FROM sika_auth_role_route ORDER BY route")
-	// 	if err != nil {
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
-	// 	}
-	// 	defer rows.Close()
-
-	// 	for rows.Next() {
-	// 		d := types.AuthRoleRoute{}
-	// 		if err := rows.Scan(&d.RoleAccess, &d.Route, &d.Method); err != nil {
-	// 			return err // Exit if we get an error
-	// 		}
-
-	// 		RbacConfigs.Items = append(RbacConfigs.Items, d)
-	// 	}
-
-	// 	data := handlers.ToMarshal(RbacConfigs)
-
-	// 	cacheErr := handlers.Cache.Set(handlers.Ctx, "sika-auth-role-route", data, config.RedisTimeCache).Err()
-	// 	if cacheErr != nil {
-	// 		return cacheErr
-	// 	}
-	// } else {
-	// 	if err := json.Unmarshal(val, RbacConfigs); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// // val, _ := handlers.Cache.Get(handlers.Ctx, "sika-auth-role-route").Bytes()
-
-	// originalURL := strings.ToLower(c.Path())
-
-	// var RoleAccess []int = nil
-	// var HadAccess bool
-
-	// for _, auth_role := range RbacConfigs.Items {
-	// 	if auth_role.Route == originalURL && auth_role.Method == c.Method() {
-	// 		RoleAccess = append(RoleAccess, auth_role.RoleAccess)
-	// 	}
-	// }
-
-	// HadAccess = true
-	// if len(RoleAccess) > 0 {
-	// 	HadAccess = false
-	// 	for _, role := range RoleAccess {
-	// 		if user.StatusRole == role {
-	// 			HadAccess = true
-	// 		}
-	// 	}
-	// }
-
-	// if HadAccess != true {
-	// 	return errors.New("You're No Authorized To Access This Route")
-	// }
-
-	return nil
 }
