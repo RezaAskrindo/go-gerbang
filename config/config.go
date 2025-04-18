@@ -9,17 +9,14 @@ import (
 )
 
 var BasePath = "."
-
-// var ConfigPath = "./config/config-dev.json"
+var PathEnv = BasePath + "env"
 
 // FOR LINUX USE FULL PATH
 // var BasePath = "/home/adminfra/sika/"
 
 // FOR DOMAINESIA
 // var BasePath = "/home/siasura1/golangapp/"
-// var ConfigPath = "config/config.json"
-
-var PathEnv = BasePath + "env"
+// var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
 	if err := godotenv.Load(PathEnv); err != nil {

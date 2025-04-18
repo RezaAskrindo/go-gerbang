@@ -29,3 +29,10 @@ dimana main adalah branch-name
 
 ## Setting Env
 Untuk penggunaan ENV silahkan cek email atau WA
+
+## Deploy For LINUX
+env GOOS=linux GOARCH=amd64 go build
+
+## Running in background in LINUX
+./golangapp/apigateway-9000 & disown
+

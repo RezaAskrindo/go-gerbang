@@ -13,7 +13,6 @@ import (
 
 	"go-gerbang/types"
 
-	// "github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -22,7 +21,7 @@ import (
 
 func ParseBody(c *fiber.Ctx, body interface{}) error {
 	if err := c.BodyParser(body); err != nil {
-		return BadRequestErrorResponse(c, fmt.Errorf("Failed To Parse Body"))
+		return BadRequestErrorResponse(c, fmt.Errorf("failed To Parse Body"))
 	}
 
 	return nil
@@ -107,41 +106,6 @@ func LoadConfig(filename string) (*types.ConfigServices, error) {
 
 	return &config, nil
 }
-
-// NOT WORKING
-// func WatchConfigFile(filename string, done chan bool) {
-// 	watcher, err := fsnotify.NewWatcher()
-// 	if err != nil {
-// 		log.Fatalf("Error creating file watcher: %v", err)
-// 	}
-// 	defer watcher.Close()
-
-// 	err = watcher.Add(filename)
-// 	if err != nil {
-// 		log.Fatalf("Error adding file to watcher: %v", err)
-// 	}
-
-// 	for {
-// 		select {
-// 		case <-done:
-// 			return
-// 		case event := <-watcher.Events:
-// 			if event.Op&fsnotify.Write == fsnotify.Write {
-// 				log.Println("Config file modified, reloading...")
-// 				newConfig, err := LoadConfig(filename)
-// 				if err == nil {
-// 					MapMicroService = newConfig
-// 					// SaveToRedis("proxy-route", newConfig)
-// 					log.Println("Config reloaded successfully")
-// 				} else {
-// 					log.Printf("Error reloading config: %v", err)
-// 				}
-// 			}
-// 		case err := <-watcher.Errors:
-// 			log.Printf("Watcher error: %v", err)
-// 		}
-// 	}
-// }
 
 // Response
 type SuccessStruct struct {
