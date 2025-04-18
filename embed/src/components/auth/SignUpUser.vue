@@ -38,7 +38,7 @@
 
         <div class="text-center text-sm">
           Alread have an account?
-          <RouterLink to="/auth/login" class="underline underline-offset-4">
+          <RouterLink :to="`/auth/login${pathQuery}`" class="underline underline-offset-4">
             Sign In
           </RouterLink>
         </div>
@@ -52,7 +52,8 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
-import { useRoute } from 'vue-router';
+import { pathQuery } from '@/stores/app.store';
+import { useRoute, useRouter } from 'vue-router';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
   Card, 
@@ -77,13 +78,14 @@ interface FormLogin {
 }
 
 const route = useRoute();
+const router = useRouter();
 
 const form: FormLogin = reactive({
-  username: 'reza',
-  fullName: 'Muhammad Reza',
-  email: 'rezamac9192@gmail.com',
-  phoneNumber: '011111',
-  password: '9192',
+  username: '',
+  fullName: '',
+  email: '',
+  phoneNumber: '',
+  password: '',
   password_repeat: ''
 })
 
@@ -100,7 +102,9 @@ async function submitLogin() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/sign-up`, {
+    const sender = route.query?.sender ? `&sender=${route.query.sender}` : '';
+
+    const response = await fetch(`${baseHost}/api/v1/auth/sign-up?notif=true&active=true${sender}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -118,6 +122,7 @@ async function submitLogin() {
     } else {
       result = await response.json();
       toast.error(result?.message);
+      router.push('/auth/login');
     }
   } catch(err) {
     console.error('Error:', err);

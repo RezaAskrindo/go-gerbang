@@ -25,4 +25,7 @@ swag init
 ```bash
 git push https://github.com/RezaAskrindo/go-gerbang.git main
 ```
-dimana main adalah <branch-name>
+dimana main adalah branch-name
+
+## Setting Env
+Untuk penggunaan ENV silahkan cek email atau WA

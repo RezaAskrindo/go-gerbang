@@ -41,13 +41,18 @@ func Signup(c *fiber.Ctx) error {
 
 	user.PasswordHash = handlers.GeneratePasswordHash(user.Password)
 
+	isActive := c.QueryBool("active")
+	if isActive {
+		user.StatusAccount = 10
+	}
+
 	if err := models.CreateUser(user); err.Error != nil {
 		return handlers.ConflictErrorResponse(c, err.Error)
 	}
 
 	sendNotification := c.QueryBool("notif")
 	QuerySender := c.Query("sender")
-	BaseUrl := c.Query("url")
+	sendPass := c.QueryBool("sendPass")
 
 	if sendNotification {
 		Sender := "Go Gerbang"
@@ -55,32 +60,33 @@ func Signup(c *fiber.Ctx) error {
 			Sender = QuerySender
 		}
 
-		if BaseUrl == "" {
-			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
+		textPass := ``
+		htmlPass := ``
+		if sendPass {
+			textPass = `password: ` + user.Password
+			htmlPass = `<div>password: <strong>` + user.Password + `</strong></div>`
 		}
 
 		sendEmail := new(types.SendingEmailToBroker)
 		sendEmail.Sender = Sender
-		sendEmail.Subject = "Akun Anda Berhasil Di Buat"
-		sendEmail.Title = "Berikut Informasi Akun Anda"
+		sendEmail.Subject = "Create Account Success"
+		sendEmail.Title = "Akun Anda Berhasil Di Buat"
 		sendEmail.BodyText = `
 			Hi, ` + user.FullName + `, berikut inform
 			for reset password pleasasi akun anda:e click link below
 
-			username: ` + user.FullName + `
-			password: ` + user.Password + `
+			username: ` + user.Username + `
+			email: ` + user.Email + textPass + `
 
 			Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.
 		`
 		sendEmail.Body = `
-			<p>Hi, ` + user.FullName + `, berikut informasi akun anda:</p>
+			<div class="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); padding-top: 20px; text-align: center;">Hi, ` + user.FullName + `, berikut informasi akun anda:</div>
 			<br/>
+			<div>username: <strong>` + user.FullName + `</strong></div>
+			<div>email: <strong>` + user.Email + `</strong></div>` + htmlPass + `
 			<br/>
-			<p>username: <strong>` + user.FullName + `</strong></p>
-			<p>password: <strong>` + user.Password + `</strong></p>
-			<br/>
-			<br/>
-			<p>Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</p>
+			<div class="padding-top: 20px; font-size: 12px; line-height: 16px; color: rgb(95, 99, 104); letter-spacing: 0.3px; text-align: center;">Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</div>
 		`
 		sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
 		sendEmail.Emails = []types.Email{
@@ -157,28 +163,29 @@ func Login(c *fiber.Ctx) error {
 	password := input.Password
 	u := new(models.User)
 
-	if user.PasswordHash != "" {
-		if !handlers.CheckPasswordHash(password, user.PasswordHash) {
-			u.LoginAttempts = user.LoginAttempts + 1
-			u.LoginIp = c.IP()
-			if block { // BLOCK Query
-				if user.LoginAttempts >= 3 {
-					models.BlockUser(user.IdAccount)
-					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
-				} else {
-					models.UpdateUser(user.IdAccount, u)
-					return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("%s", "wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
-				}
+	if !handlers.CheckPasswordHash(password, user.PasswordHash) {
+		u.LoginAttempts = user.LoginAttempts + 1
+		u.LoginIp = c.IP()
+		if block { // BLOCK Query
+			if user.LoginAttempts >= 3 {
+				models.BlockUser(user.IdAccount)
+				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
 			} else {
 				models.UpdateUser(user.IdAccount, u)
-				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("wrong password"))
+				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("%s", "wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
 			}
 		} else {
-			u.LoginAttempts = 1
-			u.LoginIp = c.IP()
-			u.LoginTime = handlers.TimeNow.Unix()
+			if user.PasswordHash == "" && user.IsGoogleAccount == 10 {
+				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("try login with Google"))
+			}
 			models.UpdateUser(user.IdAccount, u)
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("wrong password"))
 		}
+	} else {
+		u.LoginAttempts = 1
+		u.LoginIp = c.IP()
+		u.LoginTime = handlers.TimeNow.Unix()
+		models.UpdateUser(user.IdAccount, u)
 	}
 
 	randString := handlers.RandomString(32)

@@ -1,15 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainView from '../views/MainView.vue'
 import HomeView from '../views/HomeView.vue'
-import AuthView from '@/views/AuthView.vue'
-import NotFoundView from '../views/NotFoundView.vue'
+// import AuthView from '@/views/AuthView.vue'
+import NotFoundView from '@/views/NotFoundView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/auth',
-      component: AuthView,
+      // component: AuthView,
+      component: () => import('@/views/AuthView.vue'),
       children: [
         {
           path: '',
@@ -45,12 +46,7 @@ const router = createRouter({
           path: '/',
           name: 'home',
           component: HomeView
-        },
-        {
-          path: '/about',
-          name: 'about',
-          component: () => import('../views/AboutView.vue'),
-        },
+        }
       ]
     },
     {

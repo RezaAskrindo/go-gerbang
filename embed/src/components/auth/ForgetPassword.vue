@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue';
+import { reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
@@ -89,9 +89,5 @@ async function submitLogin() {
     console.error('Error:', err);
   }
 }
-
-onMounted(() => {
-  console.log(route.query?.token)
-})
 
 </script>

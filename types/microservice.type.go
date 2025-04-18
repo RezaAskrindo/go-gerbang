@@ -23,7 +23,8 @@ type LoginInput struct {
 }
 
 type GoogleLogin struct {
-	IdToken string `json:"id_token"`
+	IdToken  string `json:"id_token"`
+	ClientId string `json:"client_id"`
 }
 
 type ResetPasswordRequest struct {

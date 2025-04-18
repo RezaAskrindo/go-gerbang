@@ -9,7 +9,7 @@ import { Toaster } from '@/components/sonner'
       <div class="flex flex-col gap-6">
         <RouterView />
         <div class="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
-          Silahkan Login atau Daftar Jika Belum Punya Akun
+          Please Login or Sign Up If You Don't Have an Account
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/idtoken"
 )
 
 var TimeNow = time.Now()
@@ -79,15 +80,13 @@ func IsTOTPValid(token string) bool {
 }
 
 // GOOGLE VALIDATION SIGN IN
-func VerifyIdTokenGoogle(idToken string) (*oauth2.Tokeninfo, error) {
-	oauth2Service, err := oauth2.New(HttpClient)
-	tokenInfoCall := oauth2Service.Tokeninfo()
-	tokenInfoCall.IdToken(idToken)
-	tokenInfo, err := tokenInfoCall.Do()
+func VerifyIdTokenGoogle(ctx context.Context, idToken string, audience string) (*idtoken.Payload, error) {
+	payload, err := idtoken.Validate(ctx, idToken, audience)
 	if err != nil {
 		return nil, err
 	}
-	return tokenInfo, nil
+
+	return payload, nil
 }
 
 // SUPPORT FUNCTION

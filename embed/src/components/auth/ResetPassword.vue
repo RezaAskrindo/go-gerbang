@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
+import { pathQuery } from '@/stores/app.store';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
   Card, 
@@ -56,7 +57,7 @@ async function submitLogin() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password?url=http://localhost:3000/auth&sender=Siskor`, {
+    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
