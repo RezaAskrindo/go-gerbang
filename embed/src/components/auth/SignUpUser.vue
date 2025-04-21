@@ -33,7 +33,8 @@
         </div>
 
         <div style="display: flex; justify-content: center;">
-          <Button class="w-full"  type="submit">Sign Up</Button>
+          <Button v-if="isLoading" class="w-full" type="button" disabled>Sign Up</Button>
+          <Button v-else class="w-full" type="submit">Sign Up</Button>
         </div>
 
         <div class="text-center text-sm">
@@ -43,15 +44,13 @@
           </RouterLink>
         </div>
 
-        <!-- {{route}} -->
-
       </form>
     </CardContent>
   </Card>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { pathQuery } from '@/stores/app.store';
 import { useRoute, useRouter } from 'vue-router';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
@@ -89,6 +88,8 @@ const form: FormLogin = reactive({
   password_repeat: ''
 })
 
+const isLoading = ref(false);
+
 const removeSpaces = () => {
   form.username = form.username.replace(/[^a-zA-Z0-9]/g, '');
 };
@@ -100,9 +101,10 @@ async function submitLogin() {
   }
 
   try {
+    isLoading.value = true;
     const getCsrf = await getCSRFToken();
 
-    const sender = route.query?.sender ? `&sender=${route.query.sender}` : '';
+    const sender = route?.query?.sender ? `&sender=${route.query.sender}` : '';
 
     const response = await fetch(`${baseHost}/api/v1/auth/sign-up?notif=true&active=true${sender}`, {
       method: 'POST',
@@ -122,8 +124,11 @@ async function submitLogin() {
     } else {
       result = await response.json();
       toast.error(result?.message);
-      router.push('/auth/login');
+      if (result.status) {
+        router.push(`/auth/login${pathQuery.value}`);
+      }
     }
+    isLoading.value = false;
   } catch(err) {
     console.error('Error:', err);
   }

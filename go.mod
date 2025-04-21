@@ -1,15 +1,13 @@
 module go-gerbang
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.24.2
 
 require (
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/casbin/casbin/v2 v2.104.0
 	github.com/go-playground/validator/v10 v10.25.0
 	github.com/goccy/go-json v0.10.5
+	github.com/gofiber/contrib/casbin v1.0.17
 	github.com/gofiber/fiber/v2 v2.52.6
-	github.com/gofiber/storage/redis/v3 v3.1.3
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
@@ -20,6 +18,7 @@ require (
 	github.com/steambap/captcha v1.4.1
 	github.com/swaggo/swag v1.16.4
 	github.com/valyala/fasthttp v1.60.0
+	github.com/wneessen/go-mail v0.6.2
 	golang.org/x/crypto v0.36.0
 	google.golang.org/api v0.224.0
 	gorm.io/driver/postgres v1.5.11
@@ -33,7 +32,6 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
-	github.com/casbin/casbin/v2 v2.104.0 // indirect
 	github.com/casbin/govaluate v1.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -47,9 +45,7 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/gofiber/contrib/casbin v1.0.17 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
@@ -72,12 +68,8 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/tcplisten v1.0.0 // indirect
-	github.com/wneessen/go-mail v0.6.2 // indirect
-	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect

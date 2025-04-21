@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	"go-gerbang/config"
 	"go-gerbang/handlers"
@@ -19,6 +20,8 @@ func LoadGoogleLoginClienId(c *fiber.Ctx) error {
 func LoginWithGoogle(c *fiber.Ctx) error {
 	session := c.QueryBool("session")
 	validate_ip := c.QueryBool("validate_ip")
+	httponly := c.QueryBool("httponly")
+	domain := c.Query("domain")
 
 	b := new(types.GoogleLogin)
 
@@ -131,5 +134,28 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"success": true, "message": "Success Login", "token": token, "data": user_data})
+	if httponly { // HTTPONLY QUERY
+		if domain == "" {
+			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
+		} else {
+			cookie := new(fiber.Cookie)
+			cookie.Name = middleware.CookieJWT
+			cookie.Value = "Bearer " + token
+			cookie.HTTPOnly = true
+			cookie.Domain = domain
+			cookie.Secure = config.SecureCookies
+			cookie.SameSite = config.CookieSameSite
+			cookie.SessionOnly = false
+			c.Cookie(cookie)
+
+			return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user_data, nil)
+		}
+	}
+
+	res := fiber.Map{
+		"userData": user_data,
+		"token":    token,
+	}
+
+	return handlers.SuccessResponse(c, true, "Success Login", res, nil)
 }

@@ -2,7 +2,7 @@ import { useWebWorkerFn } from '@vueuse/core';
 
 // export const baseHost = import.meta.env.MODE === "development" ? "http://localhost:9000" : "https://apiv1.siskor.web.id";
 // export const baseHost = import.meta.env.MODE === "development" ? "http://localhost:9000" : "/api";
-export const baseHost = "/api";
+export const baseHost = "/backend";
 // export const baseHost = "https://apiv1.siskor.web.id";
 
 export const { workerFn, workerStatus, workerTerminate } = useWebWorkerFn(async (url: string) => {

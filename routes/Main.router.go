@@ -6,9 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
-
 	// "github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/gofiber/fiber/v2/middleware/monitor"
+	// "github.com/gofiber/fiber/v2/middleware/monitor"
 )
 
 var baseConfig = basicauth.Config{
@@ -24,7 +23,7 @@ func MainRoutes(app *fiber.App) {
 	// 	Index:        "index.html",
 	// }))
 
-	app.Get("/monitor", monitor.New(monitor.Config{Title: "GO GERBANG Monitor Page"}))
+	// app.Get("/monitor", monitor.New(monitor.Config{Title: "GO GERBANG Monitor Page"}))
 
 	// app.Static("/info", "./info")
 
@@ -32,7 +31,7 @@ func MainRoutes(app *fiber.App) {
 	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
 	// app.Get("/api/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
 	// PROTECT
-	// app.Get("/test-protect", middleware.Auth, services.ProtectService)
+	app.Get("/test-protect", middleware.Auth, services.ProtectService)
 
 	app.Get("/check-migration", services.CheckMigrationStatus)
 	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)

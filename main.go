@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
-
-	// "go-gerbang/docs"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
+
+	// "go-gerbang/docs"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
@@ -94,6 +95,11 @@ func main() {
 		Key: config.Config("KEY_COOKIE_APIGATEWAY"),
 	}))
 
+	config.SecureCookies, err = strconv.ParseBool(config.SecureCookiesString)
+	if err != nil {
+		config.SecureCookies = false
+	}
+
 	app.Use(etag.New())
 
 	app.Use(requestid.New())
@@ -146,6 +152,4 @@ func main() {
 	if err := app.Listen(config.Config("PORT_APIGATEWAY")); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
-
-	// middleware.SessionStore.Storage.Close()
 }

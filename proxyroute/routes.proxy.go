@@ -12,6 +12,7 @@ import (
 	"go-gerbang/middleware"
 	"go-gerbang/types"
 
+	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	"github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/proxy"
@@ -64,6 +65,8 @@ func RegisterRoutes(app *fiber.App) {
 
 	// RBAC PROTECTION
 	authz := casbin.New(casbin.Config{
+		ModelFilePath: config.BasePath + config.Config("CONFIG_PATH_CASBIN_MODEL"),
+		PolicyAdapter: fileadapter.NewAdapter(config.BasePath + config.Config("CONFIG_PATH_CASBIN_POLICY")),
 		Lookup: func(c *fiber.Ctx) string {
 			statusAccount, ok := c.Locals("status_account").(int8)
 			if !ok {

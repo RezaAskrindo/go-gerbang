@@ -22,7 +22,8 @@
         </div>
 
         <div class="flex justify-center">
-          <Button class="w-full z-10" type="submit">Login</Button>
+          <Button v-if="isLoading" class="w-full z-10" type="button" disabled>Loading...</Button>
+          <Button v-else class="w-full z-10" type="submit">Login</Button>
         </div>
 
         <div class="text-center text-sm z-10">
@@ -43,7 +44,7 @@
         </div>
 
         <div class="flex flex-col gap-4">
-          <GoogleLogin v-if="googleClientId" :callback="callbackGoogleAccount" prompt :clientId="googleClientId">
+          <GoogleLogin :callback="callbackGoogleAccount" prompt>
             <Button variant="outline" class="w-full">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path
@@ -62,8 +63,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
-import { getCSRFToken, getGoogleClientId, baseHost } from '@/stores/worker.service';
+import { reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { getCSRFToken, baseHost } from '@/stores/worker.service';
 import { 
   Card, 
   CardDescription, 
@@ -95,10 +97,13 @@ const form: FormLogin = reactive({
   password: ''
 })
 
-const googleClientId = ref('')
+const route = useRoute();
+
+const isLoading = ref(false);
 
 const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: string) => {
   try {
+    isLoading.value = true;
     const getCsrf = await getCSRFToken();
 
     const url = `${baseHost}/api/v1/auth/${urlLogin}${pathQuery.value}`;
@@ -120,30 +125,53 @@ const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: 
     } else {
       result = await response.json();
       toast.error(result?.message);
+      const getUrl = route.query?.url;
+      if (getUrl) {
+        window.location.href = getUrl.toString();
+      }
     }
+    isLoading.value = false;
   } catch (error) {
     console.log(error)
     return error
   }
-  console.log("Handle the response", formLogin)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const callbackGoogleAccount = async (response: any) => {
-  const formLogin: FormGoogleLogin = { id_token: response.credential, client_id: googleClientId.value }
-  await LoginExecution(formLogin, 'login-with-google');
+  if (response.credential) {
+    const formLogin: FormGoogleLogin = { 
+      id_token: response.credential, 
+      client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
+    }
+    await LoginExecution(formLogin, 'login-with-google');
+  } else if (response?.code) {
+    const getResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: response.code,
+        client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com',
+        client_secret: "eDNrWTVP7l5uQNYlDeuj1hCx",
+        redirect_uri: "https://auth.siskor.web.id/callback", // must match your app
+        grant_type: "authorization_code"
+      })
+    });
+
+    const tokens = await getResponse.json();
+    const formLogin: FormGoogleLogin = { 
+      id_token: tokens, 
+      client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
+    }
+    await LoginExecution(formLogin, 'login-with-google');
+  } else {
+    console.log(response);
+    toast.error("failed to get JWT Token");
+  }
 }
 
 async function submitLogin() {
   await LoginExecution(form, 'login');
 }
-
-onMounted(() => {
-  getGoogleClientId().then((res) => {
-    googleClientId.value = res.data
-  }).catch((err) => {
-    console.log(err)
-  })
-})
 
 </script>

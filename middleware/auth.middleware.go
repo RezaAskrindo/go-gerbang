@@ -15,14 +15,13 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
-	// "github.com/gofiber/storage/redis/v3"
 )
 
 // DOMAINESIA NOT SUPPORT
-//
-//	var StorageRedis = redis.New(redis.Config{
-//		URL: config.Config("REDIS_ADDRESS_FULL"),
-//	})
+// var StorageRedisFiber = redis.New(redis.Config{
+// 	URL: config.Config("REDIS_ADDRESS_FULL"),
+// })
+
 // var StorageRedisFiber = redis.New()
 
 const (
@@ -42,9 +41,6 @@ var SessionStore = session.New(session.Config{
 	CookieSecure:   config.SecureCookies,
 	CookieSameSite: config.CookieSameSite,
 	// Storage:        StorageRedisFiber,
-	// KeyGenerator: func() string {
-	// 	return handlers.RandomString(8)
-	// },
 })
 
 var CsrfActivated = false

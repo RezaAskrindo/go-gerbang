@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MainView from '../views/MainView.vue'
-import HomeView from '../views/HomeView.vue'
-// import AuthView from '@/views/AuthView.vue'
+import MainView from '@/views/MainView.vue'
+import HomeView from '@/views/HomeView.vue'
+import AuthView from '@/views/AuthView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
 
 const router = createRouter({
@@ -9,8 +9,8 @@ const router = createRouter({
   routes: [
     {
       path: '/auth',
-      // component: AuthView,
-      component: () => import('@/views/AuthView.vue'),
+      component: AuthView,
+      // component: () => import('@/views/AuthView.vue'),
       children: [
         {
           path: '',

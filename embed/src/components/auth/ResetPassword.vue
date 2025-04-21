@@ -18,7 +18,7 @@
 
         <div class="text-center text-sm">
           Already had account?
-          <RouterLink to="/auth/login" class="underline underline-offset-4">
+          <RouterLink :to="`/auth/login${pathQuery}`" class="underline underline-offset-4">
             Login Here
           </RouterLink>
         </div>
@@ -57,7 +57,7 @@ async function submitLogin() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}`, {
+    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}&url=https://auth.siskor.web.id`, {
       method: 'POST',
       credentials: 'include',
       headers: {
