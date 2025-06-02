@@ -111,7 +111,7 @@ async function submitLogin() {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'X-SGCsrf-Token': getCsrf?.data
+        'X-SGCsrf-Token': getCsrf
       },
       body: JSON.stringify(form),
     });

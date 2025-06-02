@@ -2,9 +2,12 @@ package services
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"go-gerbang/config"
 	"go-gerbang/handlers"
+	"go-gerbang/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
@@ -17,15 +20,15 @@ import (
 // @Produce json
 // @Router /secure-gateway-c [get]
 func IndexService(c *fiber.Ctx) error {
-	csrfToken, ok := c.Locals("token_csrf").(string)
+	csrfToken, ok := c.Locals(middleware.CsrfContextKey).(string)
 	if !ok {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
 	}
-	return handlers.SuccessResponse(c, true, "success getting csrf", csrfToken, nil)
+	return c.SendString(csrfToken)
 }
 
 func ProtectService(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"title": "Testing Protect Route"})
+	return c.SendString("Testing Protect Route")
 }
 
 func InfoService(c *fiber.Ctx) error {
@@ -57,4 +60,33 @@ func InfoService(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(handlers.MapMicroService.Services)
+}
+
+func SendGetRequest(url string) {
+	req := fasthttp.AcquireRequest()
+	req.SetRequestURI(url)
+	req.Header.SetMethod(fasthttp.MethodGet)
+	resp := fasthttp.AcquireResponse()
+	readTimeout, _ := time.ParseDuration("500ms")
+	writeTimeout, _ := time.ParseDuration("500ms")
+	maxIdleConnDuration, _ := time.ParseDuration("1h")
+	client := &fasthttp.Client{
+		ReadTimeout:                   readTimeout,
+		WriteTimeout:                  writeTimeout,
+		MaxIdleConnDuration:           maxIdleConnDuration,
+		NoDefaultUserAgentHeader:      true, // Don't send: User-Agent: fasthttp
+		DisableHeaderNamesNormalizing: true, // If you set the case on your headers correctly you can enable this
+		DisablePathNormalizing:        true,
+		// increase DNS cache time to an hour instead of default minute
+		Dial: (&fasthttp.TCPDialer{
+			Concurrency:      4096,
+			DNSCacheDuration: time.Hour,
+		}).Dial,
+	}
+	err := client.Do(req, resp)
+	fasthttp.ReleaseRequest(req)
+	if err != nil {
+		log.Printf("ERR Connection error: %v\n", err)
+	}
+	fasthttp.ReleaseResponse(resp)
 }

@@ -18,16 +18,19 @@ func StartingNatsServer() (*server.Server, error) {
 		Port: 9001,
 	})
 	if err != nil {
+		log.Printf("failed to create NATS server: %v", err)
 		return nil, fmt.Errorf("failed to create NATS server: %w", err)
 	}
 
 	go natsServer.Start()
 
 	if !natsServer.ReadyForConnections(10 * time.Second) {
+		log.Printf("NATS server failed to start")
 		return nil, fmt.Errorf("NATS server failed to start")
 	}
 
-	fmt.Printf("Embedded NATS server started on %s\n", natsServer.ClientURL())
+	fmt.Printf("NATS server running :9001\n")
+	// log.Printf("NATS server started on %s\n", natsServer.ClientURL())
 
 	return natsServer, nil
 }
@@ -44,5 +47,5 @@ func StartingNatsClient() {
 		log.Printf("Error connecting to NATS server: %v", err)
 	}
 
-	log.Printf("Connected to NATS server at:%s", serverURL)
+	// log.Printf("Connected to NATS server at:%s", serverURL)
 }

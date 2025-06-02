@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -15,8 +16,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
-	"github.com/valyala/fasthttp"
 )
 
 func ParseBody(c *fiber.Ctx, body interface{}) error {
@@ -79,12 +78,6 @@ func StringToFloat64(stringData string) float64 {
 	}
 	return n
 }
-
-// FASTHTTP CLIENT
-var Client = fasthttp.Client{}
-
-// UUID google
-var UUID = uuid.New()
 
 var (
 	MapMicroServiceMutex sync.RWMutex
@@ -219,4 +212,23 @@ func LowerFirstCase(str string) string {
 		return ""
 	}
 	return strings.ToLower(string(str[0])) + str[1:]
+}
+
+func BuildURL(baseURL string, queryParams map[string]string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+
+	params := url.Values{}
+	for k, v := range queryParams {
+		params.Set(k, v)
+	}
+
+	encoded := params.Encode()
+	// Replace + with %20 for spaces if desired
+	encoded = strings.ReplaceAll(encoded, "+", "%20")
+	u.RawQuery = encoded
+
+	return u.String(), nil
 }

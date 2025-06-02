@@ -44,6 +44,7 @@ var SessionStore = session.New(session.Config{
 })
 
 var CsrfActivated = false
+var CsrfContextKey = "token_csrf"
 
 var CsrfStore = session.New(session.Config{
 	Expiration:     config.CsrfTimeCache,     // Expire sessions after 30 minutes of inactivity
@@ -58,15 +59,16 @@ var CsrfProtection = csrf.New(csrf.Config{
 	Next: func(c *fiber.Ctx) bool {
 		return CsrfActivated
 	},
-	// KeyLookup:      "cookie:__SGCsrf",
-	KeyLookup:      "header:X-SGCsrf-Token",
+	// KeyLookup:      "header:X-SGCsrf-Token",
+	KeyLookup:      "cookie:__SGCsrf",
 	CookieName:     "__SGCsrf",
 	CookieHTTPOnly: true,
 	CookieSameSite: "Lax",
 	Expiration:     config.CsrfTimeCache,
-	ContextKey:     "token_csrf",
+	ContextKey:     CsrfContextKey,
 	ErrorHandler: func(c *fiber.Ctx, err error) error {
-		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("forbidden need CSRF Token"))
+		// log.Printf("Error CSRF %s\n", err)
+		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF Token is invalid"))
 	},
 })
 

@@ -55,7 +55,7 @@ func Signup(c *fiber.Ctx) error {
 	sendPass := c.QueryBool("sendPass")
 
 	if sendNotification {
-		Sender := "Go Gerbang"
+		Sender := "GOGERBANG"
 		if QuerySender != "" {
 			Sender = QuerySender
 		}
@@ -96,7 +96,8 @@ func Signup(c *fiber.Ctx) error {
 			},
 		}
 
-		go PublishServiceEmail(sendEmail)
+		// go PublishServiceEmail(sendEmail)
+		PublishEvent("user.notification", sendEmail)
 	}
 
 	return handlers.SuccessResponse(c, true, "Success Create User", nil, nil)
@@ -304,13 +305,13 @@ func RequestResetPassword(c *fiber.Ctx) error {
 	}
 
 	QuerySender := c.Query("sender")
-	BaseUrl := c.Query("url")
 
-	Sender := "Go Gerbang"
+	Sender := "GOGERBANG"
 	if QuerySender != "" {
 		Sender = QuerySender
 	}
 
+	BaseUrl := c.Query("url")
 	if BaseUrl == "" {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
 	}
@@ -340,7 +341,8 @@ func RequestResetPassword(c *fiber.Ctx) error {
 		},
 	}
 
-	go PublishServiceEmail(sendEmail)
+	// go PublishServiceEmail(sendEmail)
+	PublishEvent("user.notification", sendEmail)
 
 	return handlers.SuccessResponse(c, true, "Silahkan Cek Email", nil, nil)
 }

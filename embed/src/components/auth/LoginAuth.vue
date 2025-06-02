@@ -112,7 +112,7 @@ const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: 
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'X-SGCsrf-Token': getCsrf?.data
+        'X-SGCsrf-Token': getCsrf
       },
       body: JSON.stringify(formLogin),
     });

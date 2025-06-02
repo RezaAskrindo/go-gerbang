@@ -61,7 +61,7 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 		QuerySender := c.Query("sender")
 
 		if sendNotification {
-			Sender := "Go Gerbang"
+			Sender := "GOGERBANG"
 			if QuerySender != "" {
 				Sender = QuerySender
 			}
@@ -95,7 +95,8 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 				},
 			}
 
-			go PublishServiceEmail(sendEmail)
+			// go PublishServiceEmail(sendEmail)
+			PublishEvent("user.notification", sendEmail)
 		}
 
 		// return handlers.NotFoundErrorResponse(c, err)

@@ -1,13 +1,13 @@
 package routes
 
 import (
+	// "go-gerbang/embed"
 	"go-gerbang/middleware"
 	"go-gerbang/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
 	// "github.com/gofiber/fiber/v2/middleware/filesystem"
-	// "github.com/gofiber/fiber/v2/middleware/monitor"
 )
 
 var baseConfig = basicauth.Config{
@@ -17,15 +17,11 @@ var baseConfig = basicauth.Config{
 }
 
 func MainRoutes(app *fiber.App) {
-	// app.All("/info/*", filesystem.New(filesystem.Config{
+	// app.All("/embed/*", filesystem.New(filesystem.Config{
 	// 	Root:         embed.Dist(),
 	// 	NotFoundFile: "index.html",
 	// 	Index:        "index.html",
 	// }))
-
-	// app.Get("/monitor", monitor.New(monitor.Config{Title: "GO GERBANG Monitor Page"}))
-
-	// app.Static("/info", "./info")
 
 	// GET CSRF TOKEN
 	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
@@ -45,7 +41,7 @@ func MainRoutes(app *fiber.App) {
 
 	// MAIL
 	app.Get("/check-mail", services.MailTesting)
-	// app.Get("/send-mail", services.SendEmailHandler)
 
-	services.SubscribeServiceEmail()
+	// services.SubscribeServiceEmail()
+	services.SubscribeEvent()
 }

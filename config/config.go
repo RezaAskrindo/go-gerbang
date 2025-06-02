@@ -37,7 +37,6 @@ var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 
 var SecureCookiesString = Config("SECURE_COOKIES")
 var SecureCookies bool
-
 var CookieSameSite = Config("COOKIES_SAME_SITE")
 
 // DEV
