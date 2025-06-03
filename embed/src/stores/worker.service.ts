@@ -36,7 +36,7 @@ export const getCSRFToken = async() => {
 
   const csrf = await workerFn(`${baseHost}/secure-gateway-c`);
   workerTerminate();
-  return csrf;
+  return csrf?.data;
 }
 
 export const getGoogleClientId = async() => {

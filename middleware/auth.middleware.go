@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"go-gerbang/config"
@@ -40,11 +41,52 @@ var SessionStore = session.New(session.Config{
 	CookieHTTPOnly: true,
 	CookieSecure:   config.SecureCookies,
 	CookieSameSite: config.CookieSameSite,
+	KeyGenerator: func() string {
+		return handlers.RandomStringV1(64)
+	},
 	// Storage:        StorageRedisFiber,
 })
 
 var CsrfActivated = false
 var CsrfContextKey = "token_csrf"
+var CsrfHeaderName = "X-SGCsrf-Token"
+
+var CsrfProtection = csrf.New(csrf.Config{
+	Next: func(c *fiber.Ctx) bool {
+		return CsrfActivated
+	},
+	KeyLookup:      "header:" + CsrfHeaderName,
+	CookieName:     "csrf_header",
+	CookieSameSite: "Lax",
+	CookieSecure:   config.SecureCookies,
+	Expiration:     config.CsrfTimeCache,
+	ContextKey:     CsrfContextKey,
+	ErrorHandler: func(c *fiber.Ctx, err error) error {
+		// ERROR ON REFERER CHECKING
+		// https://docs.gofiber.io/api/middleware/csrf#referer-checking
+		switch err {
+		case csrf.ErrTokenNotFound:
+			log.Println("Error CSRF: Token not found")
+		case csrf.ErrTokenInvalid:
+			log.Println("Error CSRF: Token invalid")
+		case csrf.ErrNoReferer:
+			log.Println("Error CSRF: No Referer header")
+		case csrf.ErrBadReferer:
+			log.Println("Error CSRF: Bad Referer header")
+		default:
+			log.Printf("Error CSRF: %v\n", err)
+		}
+		tokenHeader := c.Get("X-SGCsrf-Token")
+		tokenCookie := c.Cookies("csrf_header")
+		log.Printf("Debug — Header: %q, Cookie: %q\n", tokenHeader, tokenCookie)
+		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF validation failed"))
+	},
+	Extractor: csrf.CsrfFromHeader(CsrfHeaderName),
+	KeyGenerator: func() string {
+		return handlers.RandomStringV1(32)
+	},
+	Session: CsrfStore,
+})
 
 var CsrfStore = session.New(session.Config{
 	Expiration:     config.CsrfTimeCache,     // Expire sessions after 30 minutes of inactivity
@@ -54,21 +96,22 @@ var CsrfStore = session.New(session.Config{
 	CookieSameSite: "Lax",
 })
 
-var CsrfProtection = csrf.New(csrf.Config{
+var CsrfProtectionCookies = csrf.New(csrf.Config{
 	Session: CsrfStore,
 	Next: func(c *fiber.Ctx) bool {
 		return CsrfActivated
 	},
-	// KeyLookup:      "header:X-SGCsrf-Token",
 	KeyLookup:      "cookie:__SGCsrf",
 	CookieName:     "__SGCsrf",
-	CookieHTTPOnly: true,
+	CookieHTTPOnly: false,
 	CookieSameSite: "Lax",
 	Expiration:     config.CsrfTimeCache,
 	ContextKey:     CsrfContextKey,
 	ErrorHandler: func(c *fiber.Ctx, err error) error {
-		// log.Printf("Error CSRF %s\n", err)
 		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF Token is invalid"))
+	},
+	KeyGenerator: func() string {
+		return handlers.RandomStringV1(32)
 	},
 })
 

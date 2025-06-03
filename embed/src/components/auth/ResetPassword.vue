@@ -5,7 +5,7 @@
       <CardDescription class="text-center">Get Link Reset Password</CardDescription>
     </CardHeader>
     <CardContent>
-      <form @submit.prevent="submitLogin" class="grid gap-4">
+      <form @submit.prevent="submitRequestResetPassword" class="grid gap-4">
 
         <div class="grid gap-2">
           <Label>Username/Email</Label>
@@ -53,11 +53,11 @@ const form: ResetPassword = reactive({
   identity: '',
 })
 
-async function submitLogin() {
+async function submitRequestResetPassword() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}&url=https://auth.siskor.web.id`, {
+    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}&url=https://auth.siskor.web.id/auth`, {
       method: 'POST',
       credentials: 'include',
       headers: {

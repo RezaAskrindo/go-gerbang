@@ -14,16 +14,25 @@
         <div class="grid gap-2">
           <div class="flex items-center">
             <Label>Password</Label>
-            <RouterLink :to="`/auth/reset-password${pathQuery}`" class="ml-auto text-sm underline-offset-4 hover:underline z-10">
-              Forgot your password?
-            </RouterLink>
+            <Button @click="toggleShowPassword" class="ml-auto text-sm !h-0 z-10" variant="link">
+              <span v-if="showPassword">Show</span>
+              <span v-else>Hide</span>
+              Password
+            </Button>
           </div>
-          <Input v-model="form.password" class="z-10" type="password" placeholder="Password" required />
+          <Input v-model="form.password" class="z-10" :type="showPassword ? 'password' : 'text'"  placeholder="Password" required />
         </div>
 
         <div class="flex justify-center">
           <Button v-if="isLoading" class="w-full z-10" type="button" disabled>Loading...</Button>
           <Button v-else class="w-full z-10" type="submit">Login</Button>
+        </div>
+
+        <div class="text-center text-sm z-10">
+          Forget Password?
+          <RouterLink :to="`/auth/reset-password${pathQuery}`" class="underline underline-offset-4">
+            Get Link Password
+          </RouterLink>
         </div>
 
         <div class="text-center text-sm z-10">
@@ -44,7 +53,7 @@
         </div>
 
         <div class="flex flex-col gap-4">
-          <GoogleLogin :callback="callbackGoogleAccount" prompt>
+          <!-- <GoogleLogin :callback="callbackGoogleAccount" prompt>
             <Button variant="outline" class="w-full">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path
@@ -54,7 +63,7 @@
               </svg>
               Login with Google
             </Button>
-          </GoogleLogin>
+          </GoogleLogin> -->
         </div>
 
       </form>
@@ -80,7 +89,7 @@ import { Button } from '@/components/forms/button';
 import { toast } from 'vue-sonner'
 import { pathQuery } from '@/stores/app.store';
 
-import { GoogleLogin } from "vue3-google-login"
+// import { GoogleLogin } from "vue3-google-login"
 
 interface FormLogin {
   identity: string
@@ -98,6 +107,9 @@ const form: FormLogin = reactive({
 })
 
 const route = useRoute();
+
+const showPassword = ref(true);
+const toggleShowPassword = () => showPassword.value = !showPassword.value
 
 const isLoading = ref(false);
 
@@ -137,38 +149,38 @@ const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: 
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const callbackGoogleAccount = async (response: any) => {
-  if (response.credential) {
-    const formLogin: FormGoogleLogin = { 
-      id_token: response.credential, 
-      client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
-    }
-    await LoginExecution(formLogin, 'login-with-google');
-  } else if (response?.code) {
-    const getResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code: response.code,
-        client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com',
-        client_secret: "eDNrWTVP7l5uQNYlDeuj1hCx",
-        redirect_uri: "https://auth.siskor.web.id/callback", // must match your app
-        grant_type: "authorization_code"
-      })
-    });
+ 
+// const callbackGoogleAccount = async (response: any) => {
+//   if (response.credential) {
+//     const formLogin: FormGoogleLogin = { 
+//       id_token: response.credential, 
+//       client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
+//     }
+//     await LoginExecution(formLogin, 'login-with-google');
+//   } else if (response?.code) {
+//     const getResponse = await fetch("https://oauth2.googleapis.com/token", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/x-www-form-urlencoded" },
+//       body: new URLSearchParams({
+//         code: response.code,
+//         client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com',
+//         client_secret: "eDNrWTVP7l5uQNYlDeuj1hCx",
+//         redirect_uri: "https://auth.siskor.web.id/callback", // must match your app
+//         grant_type: "authorization_code"
+//       })
+//     });
 
-    const tokens = await getResponse.json();
-    const formLogin: FormGoogleLogin = { 
-      id_token: tokens, 
-      client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
-    }
-    await LoginExecution(formLogin, 'login-with-google');
-  } else {
-    console.log(response);
-    toast.error("failed to get JWT Token");
-  }
-}
+//     const tokens = await getResponse.json();
+//     const formLogin: FormGoogleLogin = { 
+//       id_token: tokens, 
+//       client_id: '114782695264-qbhlmm64mf883aetb4l07tf4m7jv4ek1.apps.googleusercontent.com'
+//     }
+//     await LoginExecution(formLogin, 'login-with-google');
+//   } else {
+//     console.log(response);
+//     toast.error("failed to get JWT Token");
+//   }
+// }
 
 async function submitLogin() {
   await LoginExecution(form, 'login');

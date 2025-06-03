@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -20,11 +19,17 @@ import (
 // @Produce json
 // @Router /secure-gateway-c [get]
 func IndexService(c *fiber.Ctx) error {
-	csrfToken, ok := c.Locals(middleware.CsrfContextKey).(string)
-	if !ok {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
-	}
-	return c.SendString(csrfToken)
+	csrfToken, _ := c.Locals(middleware.CsrfContextKey).(string)
+	return handlers.SuccessResponse(c, true, "success get csrf token", csrfToken, nil)
+	// if !ok {
+	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
+	// }
+	// return c.SendString(csrfToken)
+}
+
+func GetCSRFTokenService(c *fiber.Ctx) error {
+	_ = c.Locals(middleware.CsrfContextKey).(string)
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func ProtectService(c *fiber.Ctx) error {

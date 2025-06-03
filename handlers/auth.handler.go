@@ -38,11 +38,13 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func GenerateResetRandom(length int) string {
-	var time = strconv.FormatInt(int64(TimeNow.UnixMilli()), 10)
+	createdTime := time.Now()
+	expiryTime := createdTime.Add(24 * time.Hour)
+	expiryUnixMilli := expiryTime.UnixMilli()
+	expiryTimeStr := strconv.FormatInt(expiryUnixMilli, 10)
 
-	reset_random := RandomString(32) + "_" + time
-
-	return string(reset_random)
+	resetRandom := RandomStringV1(length) + "_" + expiryTimeStr
+	return resetRandom
 }
 
 func IsPasswordResetTokenValid(token string) bool {
@@ -51,11 +53,16 @@ func IsPasswordResetTokenValid(token string) bool {
 		return false
 	}
 
-	intUnix, err := strconv.ParseInt(chunks[1], 10, 64)
+	intUnixMilli, err := strconv.ParseInt(chunks[1], 10, 64)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return intUnix+ExpiredReset >= TimeNow.Unix()
+
+	intUnixSec := intUnixMilli / 1000
+
+	nowSec := time.Now().Unix()
+
+	return nowSec <= intUnixSec+ExpiredReset
 }
 
 func GenerateTOTPToken(token string) string {

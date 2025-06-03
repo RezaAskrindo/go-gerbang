@@ -25,7 +25,7 @@ func MainRoutes(app *fiber.App) {
 
 	// GET CSRF TOKEN
 	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
-	// app.Get("/api/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
+	app.Get("/secure-gateway-c-cookie", middleware.CsrfProtectionCookies, services.GetCSRFTokenService)
 	// PROTECT
 	app.Get("/test-protect", middleware.Auth, services.ProtectService)
 

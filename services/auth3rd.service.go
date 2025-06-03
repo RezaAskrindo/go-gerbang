@@ -106,7 +106,7 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"success": false, "message": "Your Account is not active or blocked"})
 	}
 
-	randString := handlers.RandomString(32)
+	randString := handlers.RandomStringV1(32)
 
 	user_data := handlers.SendSafeUserData(user, randString)
 

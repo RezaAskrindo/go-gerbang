@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"go-gerbang/broker"
@@ -65,6 +64,7 @@ func main() {
 		AppName:               appName,
 		CaseSensitive:         true,
 		DisableStartupMessage: true,
+		ProxyHeader:           "X-Forwarded-For",
 		// StrictRouting:         true,
 		// Prefork:       true,
 	})
@@ -94,11 +94,6 @@ func main() {
 	app.Use(encryptcookie.New(encryptcookie.Config{
 		Key: config.Config("KEY_COOKIE_APIGATEWAY"),
 	}))
-
-	config.SecureCookies, err = strconv.ParseBool(config.SecureCookiesString)
-	if err != nil {
-		config.SecureCookies = false
-	}
 
 	app.Use(etag.New())
 

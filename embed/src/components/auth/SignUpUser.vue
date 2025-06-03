@@ -7,10 +7,10 @@
     <CardContent>
       <form @submit.prevent="submitLogin" class="grid gap-4">
 
-        <div class="grid gap-2">
+        <!-- <div class="grid gap-2">
           <Label>Username</Label>
           <Input v-model="form.username" @input="removeSpaces" type="text" placeholder="Username" required />
-        </div>
+        </div> -->
         <div class="grid gap-2">
           <Label>Full Name</Label>
           <Input v-model="form.fullName" type="text" placeholder="Full Name" required />
@@ -24,12 +24,19 @@
           <Input v-model="form.phoneNumber" type="text" placeholder="Phone Number" required />
         </div>
         <div class="grid gap-2">
-          <Label>Password</Label>
-          <Input v-model="form.password" type="password" placeholder="Password" required />
+          <div class="flex items-center">
+            <Label>Password</Label>
+            <Button @click="toggleShowPassword" class="ml-auto text-sm !h-0" variant="link">
+              <span v-if="showPassword">Show</span>
+              <span v-else>Hide</span>
+              Password
+            </Button>
+          </div>
+          <Input v-model="form.password" :type="showPassword ? 'password' : 'text'" placeholder="Password" required />
         </div>
         <div class="grid gap-2">
           <Label>Ulangi Password</Label>
-          <Input v-model="form.password_repeat" type="password" placeholder="Password" required />
+          <Input v-model="form.password_repeat" :type="showPassword ? 'password' : 'text'" placeholder="Password" required />
         </div>
 
         <div style="display: flex; justify-content: center;">
@@ -79,6 +86,9 @@ interface FormLogin {
 const route = useRoute();
 const router = useRouter();
 
+const showPassword = ref(true);
+const toggleShowPassword = () => showPassword.value = !showPassword.value
+
 const form: FormLogin = reactive({
   username: '',
   fullName: '',
@@ -90,9 +100,9 @@ const form: FormLogin = reactive({
 
 const isLoading = ref(false);
 
-const removeSpaces = () => {
-  form.username = form.username.replace(/[^a-zA-Z0-9]/g, '');
-};
+// const removeSpaces = () => {
+//   form.username = form.username.replace(/[^a-zA-Z0-9]/g, '');
+// };
 
 async function submitLogin() {
   if (form.password !== form.password_repeat) {
@@ -102,6 +112,7 @@ async function submitLogin() {
 
   try {
     isLoading.value = true;
+    form.username = form.email;
     const getCsrf = await getCSRFToken();
 
     const sender = route?.query?.sender ? `&sender=${route.query.sender}` : '';

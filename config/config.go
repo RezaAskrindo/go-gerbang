@@ -9,12 +9,12 @@ import (
 )
 
 // FOR WINDOWS
-var BasePath = "."
-var PathEnv = BasePath + "env"
+// var BasePath = "."
+// var PathEnv = BasePath + "env"
 
 // FOR LINUX
-// var BasePath = "/home/siasura1/golangapp/" //DOMAINESIA
-// var PathEnv = BasePath + ".env"
+var BasePath = "/home/siasura1/golangapp/" //DOMAINESIA
+var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
 	if err := godotenv.Load(PathEnv); err != nil {
@@ -35,8 +35,9 @@ var RedisTimeCache = 10800 * time.Second
 var SecretKey = Config("SECRET_KEY_APIGATEWAY")
 var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 
+// var SecureCookies bool
 var SecureCookiesString = Config("SECURE_COOKIES")
-var SecureCookies bool
+var SecureCookies = true
 var CookieSameSite = Config("COOKIES_SAME_SITE")
 
 // DEV

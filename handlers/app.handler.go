@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -60,6 +61,17 @@ func RandomString(length int) string {
 		b[i] = letters[idx.Int64()]
 	}
 	return string(b)
+}
+
+func RandomStringV1(length int) string {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		RandomString(length)
+	}
+	str := base64.RawURLEncoding.EncodeToString(b)
+	str = strings.ReplaceAll(str, "_", "-")
+	return str
 }
 
 // CONVERT
