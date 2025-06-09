@@ -60,6 +60,7 @@ import { Button } from '@/components/forms/button';
 
 import { toast } from 'vue-sonner'
 import { pathQuery } from '@/stores/app.store';
+import { sendNotification } from '@/lib/notification';
 
 interface ResetPassword {
   password: string
@@ -104,6 +105,8 @@ async function submitNewPassword() {
       window.history.back();
     }
   } catch(err) {
+    toast.error('Error occurred while filling new password. Please try again later.');
+    sendNotification(`Error Fill New Password Go Gerbang!\n details: on token ${route.query?.token}`);
     console.error('Error:', err);
   }
 }

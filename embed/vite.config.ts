@@ -21,8 +21,8 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/backend': {
-        // target: 'http://localhost:9000',
-        target: 'https://apigateway.siskor.web.id',
+        target: 'http://localhost:9000',
+        // target: 'https://apigateway.siskor.web.id',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/backend/, ''),
       },

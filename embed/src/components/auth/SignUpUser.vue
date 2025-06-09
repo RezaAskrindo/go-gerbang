@@ -23,20 +23,20 @@
           <Label>Phone Number</Label>
           <Input v-model="form.phoneNumber" type="text" placeholder="Phone Number" required />
         </div>
+        <p></p>
         <div class="grid gap-2">
-          <div class="flex items-center">
-            <Label>Password</Label>
-            <Button @click="toggleShowPassword" class="ml-auto text-sm !h-0" variant="link">
-              <span v-if="showPassword">Show</span>
-              <span v-else>Hide</span>
-              Password
-            </Button>
-          </div>
-          <Input v-model="form.password" :type="showPassword ? 'password' : 'text'" placeholder="Password" required />
+          <Label>Password</Label>
+          <Input v-model="form.password" placeholder="Password" required :use-password-show="true" :aria-invalid="wrongAtPassword" />
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2 dark:bg-gray-700">
+          <div v-if="passwordStrength.level === 3" class="bg-green-600 h-2.5 rounded-full dark:bg-green-500" :style="{ width: passwordStrength.percentage+'%' }"></div>
+          <div v-else-if="passwordStrength.level === 2" class="bg-teal-600 h-2.5 rounded-full dark:bg-teal-500" :style="{ width: passwordStrength.percentage+'%' }"></div>
+          <div v-else-if="form.password.length > 4" class="bg-orange-600 h-2.5 rounded-full dark:bg-orange-500" style="width: 50%"></div>
+          <div v-else class="bg-red-600 h-2.5 rounded-full dark:bg-red-500" :style="{ width: passwordStrength.percentage+'%' }"></div>
         </div>
         <div class="grid gap-2">
           <Label>Ulangi Password</Label>
-          <Input v-model="form.password_repeat" :type="showPassword ? 'password' : 'text'" placeholder="Password" required />
+          <Input v-model="form.password_repeat" placeholder="Ulangi Password" required :use-password-show="true" :aria-invalid="wrongAtPassword" />
         </div>
 
         <div style="display: flex; justify-content: center;">
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { pathQuery } from '@/stores/app.store';
 import { useRoute, useRouter } from 'vue-router';
 import { getCSRFToken, baseHost } from '@/stores/worker.service';
@@ -73,6 +73,8 @@ import { Label } from '@/components/forms/label';
 import { Button } from '@/components/forms/button';
 
 import { toast } from 'vue-sonner'
+import { sendNotification } from '@/lib/notification';
+import { CheckPasswordStrong } from '@/lib/checkPasswordStrong';
 
 interface FormLogin {
   username: string
@@ -86,19 +88,20 @@ interface FormLogin {
 const route = useRoute();
 const router = useRouter();
 
-const showPassword = ref(true);
-const toggleShowPassword = () => showPassword.value = !showPassword.value
-
 const form: FormLogin = reactive({
   username: '',
   fullName: '',
   email: '',
-  phoneNumber: '',
+  phoneNumber: '08',
   password: '',
   password_repeat: ''
 })
 
 const isLoading = ref(false);
+
+const wrongAtPassword = ref(false);
+
+const passwordStrength = computed(() => CheckPasswordStrong(form.password));
 
 // const removeSpaces = () => {
 //   form.username = form.username.replace(/[^a-zA-Z0-9]/g, '');
@@ -106,6 +109,7 @@ const isLoading = ref(false);
 
 async function submitLogin() {
   if (form.password !== form.password_repeat) {
+    wrongAtPassword.value = true;
     toast.error("You're Password Not Equal");
     return '';
   }
@@ -141,6 +145,9 @@ async function submitLogin() {
     }
     isLoading.value = false;
   } catch(err) {
+    isLoading.value = false;
+    toast.error('Error occurred while Signing up. Please try again later.');
+    sendNotification(`Error Sign Up Go Gerbang!\n details: ${JSON.stringify(form)}`);
     console.error('Error:', err);
   }
 }

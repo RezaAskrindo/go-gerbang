@@ -44,6 +44,7 @@ import { Label } from '@/components/forms/label';
 import { Button } from '@/components/forms/button';
 
 import { toast } from 'vue-sonner'
+import { sendNotification } from '@/lib/notification';
 
 interface ResetPassword {
   identity: string
@@ -77,6 +78,8 @@ async function submitRequestResetPassword() {
       toast.error(result?.message);
     }
   } catch(err) {
+    toast.error('Error occurred while getting reset password. Please try again later.');
+    sendNotification(`Error Get Reset Password Go Gerbang!\n details: ${JSON.stringify(form.identity)}`);
     console.error('Error:', err);
   }
 }

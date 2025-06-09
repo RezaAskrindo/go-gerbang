@@ -1,13 +1,11 @@
 import { useWebWorkerFn } from '@vueuse/core';
 
-// export const baseHost = import.meta.env.MODE === "development" ? "http://localhost:9000" : "https://apiv1.siskor.web.id";
-// export const baseHost = import.meta.env.MODE === "development" ? "http://localhost:9000" : "/api";
-export const baseHost = "/backend";
-// export const baseHost = "https://apiv1.siskor.web.id";
+// export const baseHost = import.meta.env.MODE === "development" ? "http://localhost:9000" : `${location.origin}/backend`;
+export const baseHost = `${location.origin}/backend`;
 
 export const { workerFn, workerStatus, workerTerminate } = useWebWorkerFn(async (url: string) => {
   try {
-    const response = await fetch(`${location.origin}${url}`, {
+    const response = await fetch(`${url}`, {
       credentials: 'include',
       headers: {
         "Content-Type": "application/json",
@@ -15,7 +13,24 @@ export const { workerFn, workerStatus, workerTerminate } = useWebWorkerFn(async 
     });
 
     if (!response.ok) {
-      if (response.status === 401) return { status: false }; 
+      // NOTE: WORKAROUND FOR SERVICE UNAVAILABLE
+      // If the service is unavailable, we will try to start it using a POST request.
+      if (response.status === 503) {
+        const credentials = btoa(`admin:@dmin9192`);
+        const startService = await fetch(`https://siasuransi.com/go-services/`, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Authorization': `Basic ${credentials}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ "app-name": "apigateway-9000" }),
+        });
+
+        await startService.json();
+      };
+
+      if (response.status === 401) return { status: false };
       
       console.error(`HTTP error! Status: ${response.status}`);
       return response.json();

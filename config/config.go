@@ -9,12 +9,12 @@ import (
 )
 
 // FOR WINDOWS
-// var BasePath = "."
-// var PathEnv = BasePath + "env"
+var BasePath = "."
+var PathEnv = BasePath + "env"
 
 // FOR LINUX
-var BasePath = "/home/siasura1/golangapp/" //DOMAINESIA
-var PathEnv = BasePath + ".env"
+// var BasePath = "/home/siasura1/golangapp/" //DOMAINESIA
+// var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
 	if err := godotenv.Load(PathEnv); err != nil {

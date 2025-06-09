@@ -9,18 +9,11 @@
 
         <div class="grid gap-2">
           <Label>Username/Email</Label>
-          <Input v-model="form.identity" class="z-10" type="text" placeholder="Username/Email" required />
+          <Input v-model="form.identity" class="z-10" type="text" placeholder="Username/Email" required :aria-invalid="isIdentityError" />
         </div>
         <div class="grid gap-2">
-          <div class="flex items-center">
-            <Label>Password</Label>
-            <Button @click="toggleShowPassword" class="ml-auto text-sm !h-0 z-10" variant="link">
-              <span v-if="showPassword">Show</span>
-              <span v-else>Hide</span>
-              Password
-            </Button>
-          </div>
-          <Input v-model="form.password" class="z-10" :type="showPassword ? 'password' : 'text'"  placeholder="Password" required />
+          <Label>Password</Label>
+          <Input v-model="form.password" placeholder="Password" required :use-password-show="true" :aria-invalid="isPasswordError" />
         </div>
 
         <div class="flex justify-center">
@@ -48,9 +41,9 @@
           </RouterLink>
         </div> -->
 
-        <div class="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+        <!-- <div class="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
           <span class="relative z-10 bg-background px-2 text-muted-foreground">Or continue with</span>
-        </div>
+        </div> -->
 
         <div class="flex flex-col gap-4">
           <!-- <GoogleLogin :callback="callbackGoogleAccount" prompt>
@@ -88,6 +81,7 @@ import { Button } from '@/components/forms/button';
 
 import { toast } from 'vue-sonner'
 import { pathQuery } from '@/stores/app.store';
+import { sendNotification } from '@/lib/notification';
 
 // import { GoogleLogin } from "vue3-google-login"
 
@@ -96,10 +90,10 @@ interface FormLogin {
   password: string
 }
 
-interface FormGoogleLogin {
-  id_token: string
-  client_id: string
-}
+// interface FormGoogleLogin {
+//   id_token: string
+//   client_id: string
+// }
 
 const form: FormLogin = reactive({
   identity: '',
@@ -108,13 +102,15 @@ const form: FormLogin = reactive({
 
 const route = useRoute();
 
-const showPassword = ref(true);
-const toggleShowPassword = () => showPassword.value = !showPassword.value
-
 const isLoading = ref(false);
 
-const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: string) => {
+const isIdentityError = ref(false);
+const isPasswordError = ref(false);
+
+const LoginExecution = async (formLogin: FormLogin, urlLogin: string) => {
   try {
+    isIdentityError.value = false;
+    isPasswordError.value = false;
     isLoading.value = true;
     const getCsrf = await getCSRFToken();
 
@@ -134,6 +130,11 @@ const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: 
     if (!response.ok) {
       result = await response.json();
       toast.error(result?.message);
+      if (result?.message === 'record not found') {
+        isIdentityError.value = true;
+      } else if (result?.message === 'wrong password') {
+        isPasswordError.value = true;
+      }
     } else {
       result = await response.json();
       toast.error(result?.message);
@@ -144,11 +145,13 @@ const LoginExecution = async (formLogin: FormLogin | FormGoogleLogin, urlLogin: 
     }
     isLoading.value = false;
   } catch (error) {
-    console.log(error)
+    isLoading.value = false;
+    toast.error('Error occurred while logging in. Please try again later.');
+    sendNotification(`Error Login Auth Go Gerbang!\n details: ${JSON.stringify(formLogin.identity)}`);
+    // console.log(error)
     return error
   }
 }
-
  
 // const callbackGoogleAccount = async (response: any) => {
 //   if (response.credential) {
