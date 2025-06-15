@@ -47,6 +47,7 @@ type ListEmail struct {
 	BodyTemplateText string  `json:"body_template_text"`
 	BodyTemplateHtml string  `json:"body_template_html"`
 	Emails           []Email `json:"emails"`
+	TypeBatchAddress string  `json:"type_batch_address"` // "all" or "single" default "single"
 }
 
 type SendingEmailToBroker struct {
@@ -57,4 +58,13 @@ type SendingEmailToBroker struct {
 	Body     string  `json:"body"`
 	Footer   string  `json:"footer"`
 	Emails   []Email `json:"emails"`
+}
+
+type ResendKey struct {
+	Sender string
+	Key    string
+}
+type ListImageEmail struct {
+	Sender       string
+	ImageElement string
 }

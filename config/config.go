@@ -14,6 +14,7 @@ var PathEnv = BasePath + "env"
 
 // FOR LINUX
 // var BasePath = "/home/siasura1/golangapp/" //DOMAINESIA
+// var BasePath = "/var/www/services/go-gerbang/" //BIZNET
 // var PathEnv = BasePath + ".env"
 
 func Config(key string) string {

@@ -137,6 +137,7 @@ const LoginExecution = async (formLogin: FormLogin, urlLogin: string) => {
       }
     } else {
       result = await response.json();
+      console.log(result);
       toast.error(result?.message);
       const getUrl = route.query?.url;
       if (getUrl) {
@@ -146,9 +147,9 @@ const LoginExecution = async (formLogin: FormLogin, urlLogin: string) => {
     isLoading.value = false;
   } catch (error) {
     isLoading.value = false;
+    console.log(error)
     toast.error('Error occurred while logging in. Please try again later.');
     sendNotification(`Error Login Auth Go Gerbang!\n details: ${JSON.stringify(formLogin.identity)}`);
-    // console.log(error)
     return error
   }
 }

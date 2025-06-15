@@ -91,7 +91,7 @@ func SendGetRequest(url string) {
 	err := client.Do(req, resp)
 	fasthttp.ReleaseRequest(req)
 	if err != nil {
-		log.Printf("ERR Connection error: %v\n", err)
+		log.Printf("ERR HTTP Connection error: %v\n", err)
 	}
 	fasthttp.ReleaseResponse(resp)
 }

@@ -22,7 +22,7 @@ export default defineConfig({
     proxy: {
       '/backend': {
         target: 'http://localhost:9000',
-        // target: 'https://apigateway.siskor.web.id',
+        // target: 'https://auth.siskor.web.id/backend',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/backend/, ''),
       },

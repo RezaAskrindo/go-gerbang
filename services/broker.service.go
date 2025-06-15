@@ -162,6 +162,19 @@ func SubscribeEvent() {
 	// log.Println("Listening for subcribe events...")
 }
 
+var ListImageEmail []types.ListImageEmail = []types.ListImageEmail{
+	{Sender: "SISKOR", ImageElement: "<img src=\"https://siskor.web.id/assets/siskor-logo.png\" width=\"200\" height=\"70\" aria-hidden=\"true\" style=\"margin-bottom:16px\" alt=\"SISKOR LOGO\">"},
+}
+
+func GetImageEmail(sender string) string {
+	for _, key := range ListImageEmail {
+		if key.Sender == sender {
+			return key.ImageElement
+		}
+	}
+	return ""
+}
+
 func handleMsg(msg *nats.Msg) {
 	var email types.SendingEmailToBroker
 
@@ -170,15 +183,12 @@ func handleMsg(msg *nats.Msg) {
 		return
 	}
 
+	ImageEmail := GetImageEmail(email.Sender)
+
 	dataSend := new(types.ListEmail)
 	dataSend.Sender = email.Sender
 	dataSend.Subject = email.Subject
-	dataSend.BodyTemplateText = email.Title + `
-	
-	` + email.BodyText + `
-	
-	
-	` + email.Footer
+	dataSend.BodyTemplateText = email.Title + email.BodyText + email.Footer
 	dataSend.BodyTemplateHtml = `<div style="margin: 0px; padding: 0px;" bgcolor="#FFFFFF">
 		<table width="100%" height="100%" style="min-width: 348px;" border="0" cellspacing="0" cellpadding="0" lang="en">
 			<tbody>
@@ -193,6 +203,7 @@ func handleMsg(msg *nats.Msg) {
 									<td width="8" style="width: 8px;"></td>
 									<td>
 										<div style="border-style: solid; border-width: thin; border-color: rgb(218, 220, 224); border-radius: 8px; padding: 40px 20px;" align="center">
+											` + ImageEmail + `
 											<div style="font-family: Google Sans, Roboto, RobotoDraft, Helvetica, Arial, sans-serif; border-bottom: thin solid rgb(218, 220, 224); color: rgba(0, 0, 0, 0.87); line-height: 32px; padding-bottom: 24px; text-align: center; word-break: break-word;">
 												<div style="font-size: 24px;">
 													` + email.Title + `
@@ -220,7 +231,10 @@ func handleMsg(msg *nats.Msg) {
 	</div>`
 	dataSend.Emails = email.Emails
 
-	if !SendMail(dataSend) {
+	// if !SendMail(dataSend) {
+	// 	log.Println("failed to send email")
+	// }
+	if !SendResendMail(dataSend) {
 		log.Println("failed to send email")
 	}
 

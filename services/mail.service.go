@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	ht "html/template"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"go-gerbang/types"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/resend/resend-go/v2"
 	"github.com/wneessen/go-mail"
 )
 
@@ -49,40 +51,55 @@ func MailTesting(c *fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("please provide valid email"))
 	}
 
-	from := config.Config(appName + "_CONFIG_AUTH_EMAIL")
+	// from := config.Config(appName + "_CONFIG_AUTH_EMAIL")
 
-	if !isValidEmail(from) {
-		baseURL := "https://api2.callmebot.com/text.php"
-		params := map[string]string{
-			"user": "@Reza_aceh",
-			"text": "config email not setup for " + appName,
-		}
-		fullURL, err := handlers.BuildURL(baseURL, params)
-		if err != nil {
-			log.Println("Error building URL:", err)
-		}
-		SendGetRequest(fullURL)
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("config email not setup for "+appName))
-	}
+	// if !isValidEmail(from) {
+	// 	baseURL := "https://api2.callmebot.com/text.php"
+	// 	params := map[string]string{
+	// 		"user": "@Reza_aceh",
+	// 		"text": "config email not setup for " + appName,
+	// 	}
+	// 	fullURL, err := handlers.BuildURL(baseURL, params)
+	// 	if err != nil {
+	// 		log.Println("Error building URL:", err)
+	// 	}
+	// 	SendGetRequest(fullURL)
+	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("config email not setup for "+appName))
+	// }
 
-	message := mail.NewMsg()
-	if err := message.From(config.Config(appName + "_CONFIG_AUTH_EMAIL")); err != nil {
-		log.Printf("failed to set From address: %s", err)
-		return handlers.InternalServerErrorResponse(c, err)
-	}
-	if err := message.To(to); err != nil {
-		log.Printf("failed to set To address: %s", err)
-		return handlers.InternalServerErrorResponse(c, err)
-	}
+	// message := mail.NewMsg()
+	// if err := message.From(config.Config(appName + "_CONFIG_AUTH_EMAIL")); err != nil {
+	// 	log.Printf("failed to set From address: %s", err)
+	// 	return handlers.InternalServerErrorResponse(c, err)
+	// }
+	// if err := message.To(to); err != nil {
+	// 	log.Printf("failed to set To address: %s", err)
+	// 	return handlers.InternalServerErrorResponse(c, err)
+	// }
 
-	message.Subject("Testing Email!")
-	message.SetBodyString(mail.TypeTextPlain, "Testing email...")
-	client, err := CreateMailClient(appName)
-	if err != nil {
-		log.Printf("failed to create mail client: %s", err)
-	}
-	if err := client.DialAndSend(message); err != nil {
-		log.Printf("failed to send mail: %s", err)
+	// message.Subject("Testing Email!")
+	// message.SetBodyString(mail.TypeTextPlain, "Testing email...")
+	// client, err := CreateMailClient(appName)
+	// if err != nil {
+	// 	log.Printf("failed to create mail client: %s", err)
+	// }
+	// if err := client.DialAndSend(message); err != nil {
+	// 	log.Printf("failed to send mail: %s", err)
+	// }
+
+	send := SendResendMail(&types.ListEmail{
+		Sender:           appName,
+		Subject:          "Testing Email!",
+		BodyTemplateText: "Testing email...",
+		BodyTemplateHtml: "<p>Testing email...</p>",
+		Emails: []types.Email{
+			{Name: "Test User", EmailAddr: to},
+		},
+	})
+
+	if !send {
+		log.Printf("failed to send mail using Resend: %s", "error sending email")
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
 	}
 
 	return handlers.SuccessResponse(c, true, "Check Mail Success", nil, nil)
@@ -153,33 +170,78 @@ func SendMail(list *types.ListEmail) bool {
 	return true
 }
 
-// type Response struct {
-// 	Response interface{} `json:"response"`
-// 	Status   int         `json:"status"`
-// }
+// RESEND API
+var APIResent []types.ResendKey = []types.ResendKey{
+	{Sender: "SISKOR", Key: "re_DByKnU6f_PXKdrRBzANLfZhE7Yn5i7Kmq"},
+}
 
-// func JsonResponseHandler(response Response, statusCode int) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		w.WriteHeader(statusCode)
-// 		w.Header().Set("Content-Type", "application/json")
+func GetApiResendKey(sender string) string {
+	for _, key := range APIResent {
+		if key.Sender == sender {
+			return key.Key
+		}
+	}
+	return ""
+}
 
-// 		if err := json.NewEncoder(w).Encode(response); err != nil {
-// 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
-// 		}
-// 	}
-// }
+var ResendClient *resend.Client
 
-// NOT USED ANYMORE BECAUSE USING DIRECT FUNCTION TO SUBCRIBE
-// func SendEmailHandler(c *fiber.Ctx) error {
-// 	u := new(types.ListEmail)
+func extractEmailAddrs(listEmail types.ListEmail) []string {
+	var emailAddrs []string
+	for _, email := range listEmail.Emails {
+		emailAddrs = append(emailAddrs, email.EmailAddr)
+	}
+	return emailAddrs
+}
 
-// 	if err := handlers.ParseBody(c, u); err != nil {
-// 		return handlers.BadRequestErrorResponse(c, err)
-// 	}
+func SendResendMail(list *types.ListEmail) bool {
+	APIResentKey := GetApiResendKey(list.Sender)
 
-// 	if !SendMail(u) {
-// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed"))
-// 	}
+	if APIResentKey == "" {
+		return false
+	}
 
-// 	return handlers.SuccessResponse(c, true, "success send email", nil, nil)
-// }
+	if ResendClient == nil {
+		ResendClient = resend.NewClient(APIResentKey)
+	}
+
+	if list.TypeBatchAddress == "all" {
+		emailAddrs := extractEmailAddrs(*list)
+
+		params := &resend.SendEmailRequest{
+			From:    list.Sender + " <" + config.Config(list.Sender+"_CONFIG_AUTH_EMAIL") + ">",
+			To:      emailAddrs,
+			Subject: list.Subject,
+			Text:    list.BodyTemplateText,
+			Html:    list.BodyTemplateHtml,
+		}
+
+		_, err := ResendClient.Emails.Send(params)
+		if err != nil {
+			log.Printf("failed to send email using Resend: %s", err)
+			return false
+		}
+	} else {
+		ctx := context.TODO()
+
+		var batchEmails []*resend.SendEmailRequest
+		for _, email := range list.Emails {
+			req := &resend.SendEmailRequest{
+				From:    list.Sender + " <" + config.Config(list.Sender+"_CONFIG_AUTH_EMAIL") + ">",
+				To:      []string{email.EmailAddr},
+				Subject: list.Subject,
+				Text:    list.BodyTemplateText,
+				Html:    list.BodyTemplateHtml,
+			}
+			batchEmails = append(batchEmails, req)
+		}
+
+		_, err := ResendClient.Batch.SendWithContext(ctx, batchEmails)
+		if err != nil {
+			log.Printf("failed to send email using Resend: %s", err)
+			return false
+		}
+	}
+
+	return true
+}
