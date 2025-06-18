@@ -13,8 +13,7 @@ import (
 
 func StartingNatsServer() (*server.Server, error) {
 	natsServer, err := server.NewServer(&server.Options{
-		Host: "127.0.0.1",
-		// Port: 4222, // Default NATS port
+		Host: "0.0.0.0",
 		Port: 9001,
 	})
 	if err != nil {
@@ -29,15 +28,13 @@ func StartingNatsServer() (*server.Server, error) {
 		return nil, fmt.Errorf("NATS server failed to start")
 	}
 
-	fmt.Printf("NATS server running :9001\n")
-	// log.Printf("NATS server started on %s\n", natsServer.ClientURL())
+	fmt.Printf("✅ NATS server running :9001\n")
 
 	return natsServer, nil
 }
 
 var NatsClient *nats.Conn
 
-// StartingNatsClient initializes a connection to the NATS server using the URL from the configuration.
 func StartingNatsClient() {
 	serverURL := config.Config("NATS_SERVER_URL")
 
@@ -47,5 +44,5 @@ func StartingNatsClient() {
 		log.Printf("Error connecting to NATS server: %v", err)
 	}
 
-	// log.Printf("Connected to NATS server at:%s", serverURL)
+	fmt.Printf("✅ NATS client connected at:%s\n", serverURL)
 }

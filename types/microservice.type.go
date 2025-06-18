@@ -63,7 +63,9 @@ type SendingEmailToBroker struct {
 type ResendKey struct {
 	Sender string
 	Key    string
+	Email  string
 }
+
 type ListImageEmail struct {
 	Sender       string
 	ImageElement string

@@ -172,16 +172,16 @@ func SendMail(list *types.ListEmail) bool {
 
 // RESEND API
 var APIResent []types.ResendKey = []types.ResendKey{
-	{Sender: "SISKOR", Key: "re_DByKnU6f_PXKdrRBzANLfZhE7Yn5i7Kmq"},
+	{Sender: "SISKOR", Key: "re_DByKnU6f_PXKdrRBzANLfZhE7Yn5i7Kmq", Email: "notification@siskor.web.id"},
 }
 
-func GetApiResendKey(sender string) string {
+func GetApiResendKey(sender string) *types.ResendKey {
 	for _, key := range APIResent {
 		if key.Sender == sender {
-			return key.Key
+			return &key
 		}
 	}
-	return ""
+	return nil
 }
 
 var ResendClient *resend.Client
@@ -197,19 +197,19 @@ func extractEmailAddrs(listEmail types.ListEmail) []string {
 func SendResendMail(list *types.ListEmail) bool {
 	APIResentKey := GetApiResendKey(list.Sender)
 
-	if APIResentKey == "" {
+	if APIResentKey == nil {
 		return false
 	}
 
 	if ResendClient == nil {
-		ResendClient = resend.NewClient(APIResentKey)
+		ResendClient = resend.NewClient(APIResentKey.Key)
 	}
 
 	if list.TypeBatchAddress == "all" {
 		emailAddrs := extractEmailAddrs(*list)
 
 		params := &resend.SendEmailRequest{
-			From:    list.Sender + " <" + config.Config(list.Sender+"_CONFIG_AUTH_EMAIL") + ">",
+			From:    list.Sender + " <" + APIResentKey.Email + ">",
 			To:      emailAddrs,
 			Subject: list.Subject,
 			Text:    list.BodyTemplateText,
@@ -227,7 +227,7 @@ func SendResendMail(list *types.ListEmail) bool {
 		var batchEmails []*resend.SendEmailRequest
 		for _, email := range list.Emails {
 			req := &resend.SendEmailRequest{
-				From:    list.Sender + " <" + config.Config(list.Sender+"_CONFIG_AUTH_EMAIL") + ">",
+				From:    list.Sender + " <" + APIResentKey.Email + ">",
 				To:      []string{email.EmailAddr},
 				Subject: list.Subject,
 				Text:    list.BodyTemplateText,
