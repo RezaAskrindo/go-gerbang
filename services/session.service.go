@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"go-gerbang/handlers"
@@ -25,9 +26,47 @@ func LogoutWeb(c *fiber.Ctx) error {
 
 	currSession.SetExpiry(time.Second * -60)
 
+	token := c.Get("Authorization")
+	if token == "" {
+		token = c.Cookies(middleware.CookieRefreshJWT)
+	}
+
+	if token == "" {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("missing refresh token"))
+	}
+
+	var refreshToken string
+	if strings.HasPrefix(token, "Bearer ") {
+		refreshToken = token[len("Bearer "):]
+	} else {
+		refreshToken = token
+	}
+
+	user, err := middleware.Verify(refreshToken, "refresh")
+	if err != nil {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid refresh token"))
+	}
+
+	jti := user.Jti
+	if jti == nil || *jti == "" || handlers.IsTokenBlacklisted(*jti) {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("this refresh token is no longer valid"))
+	}
+	err = handlers.BlacklistToken(*jti)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to blacklist token"))
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     middleware.CookieRefreshJWT,
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Strict",
+	})
+
 	cookieJWT := new(fiber.Cookie)
 	cookieJWT.Name = middleware.CookieJWT
-	// cookieJWT.Expires = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	cookieJWT.Expires = time.Now().Add(-(time.Hour * 2))
 	c.Cookie(cookieJWT)
 
@@ -88,23 +127,29 @@ func AuthByJWT(c *fiber.Ctx) error {
 
 func GetSessionJWT(c *fiber.Ctx) error {
 	data := new(models.UserData)
-	data = &models.UserData{
-		IdAccount:       c.Locals("id_account").(string),
-		IdentityNumber:  c.Locals("identity_number").(string),
-		Username:        c.Locals("username").(string),
-		FullName:        c.Locals("full_name").(string),
-		Email:           c.Locals("email").(string),
-		PhoneNumber:     c.Locals("phone_number").(string),
-		DateOfBirth:     c.Locals("date_of_birth").(*time.Time),
-		AuthKey:         c.Locals("auth_key").(string),
-		UsedPin:         c.Locals("used_pin").(int8),
-		IsGoogleAccount: c.Locals("is_google_account").(int8),
-		StatusAccount:   c.Locals("status_account").(int8),
-		LoginIp:         c.Locals("login_ip").(string),
-		LoginAttempts:   c.Locals("login_attempts").(int8),
-		LoginTime:       c.Locals("login_time").(int64),
-		CreatedAt:       c.Locals("created_at").(int),
-		UpdatedAt:       c.Locals("updated_at").(int),
+	// data = &models.UserData{
+	// 	IdAccount:       c.Locals("id_account").(string),
+	// 	IdentityNumber:  c.Locals("identity_number").(string),
+	// 	Username:        c.Locals("username").(string),
+	// 	FullName:        c.Locals("full_name").(string),
+	// 	Email:           c.Locals("email").(string),
+	// 	PhoneNumber:     c.Locals("phone_number").(string),
+	// 	DateOfBirth:     c.Locals("date_of_birth").(*time.Time),
+	// 	AuthKey:         c.Locals("auth_key").(string),
+	// 	UsedPin:         c.Locals("used_pin").(int8),
+	// 	IsGoogleAccount: c.Locals("is_google_account").(int8),
+	// 	StatusAccount:   c.Locals("status_account").(int8),
+	// 	LoginIp:         c.Locals("login_ip").(string),
+	// 	LoginAttempts:   c.Locals("login_attempts").(int8),
+	// 	LoginTime:       c.Locals("login_time").(int64),
+	// 	CreatedAt:       c.Locals("created_at").(int),
+	// 	UpdatedAt:       c.Locals("updated_at").(int),
+	// }
+	userData, ok := c.Locals("user").(*models.UserData)
+	if ok {
+		data = userData
+	} else {
+		data = nil
 	}
 
 	return handlers.SuccessResponse(c, true, "Success Get JWT", data, nil)

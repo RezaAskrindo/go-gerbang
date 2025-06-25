@@ -15,6 +15,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/idtoken"
 )
@@ -116,31 +118,51 @@ func SendSafeUserData(user *models.User, randString string) models.UserData {
 	}
 }
 
-func GenerateTokenJWT(user_data models.UserData, c *fiber.Ctx) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
+// token := jwt.New(jwt.SigningMethodHS256)
+func GenerateTokenJWT(user_data models.UserData, isRefresh bool) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS512)
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["id_account"] = user_data.IdAccount
-	claims["identity_number"] = user_data.IdentityNumber
-	claims["username"] = user_data.Username
 	claims["full_name"] = user_data.FullName
 	claims["email"] = user_data.Email
-	claims["phone_number"] = user_data.PhoneNumber
-	claims["date_of_birth"] = user_data.DateOfBirth
-	claims["auth_key"] = user_data.AuthKey
-	claims["used_pin"] = user_data.UsedPin
-	claims["is_google_account"] = user_data.IsGoogleAccount
-	claims["status_account"] = user_data.StatusAccount
-	claims["login_ip"] = user_data.LoginIp
-	claims["login_attempts"] = user_data.LoginAttempts
-	claims["login_time"] = user_data.LoginTime
-	claims["created_at"] = user_data.CreatedAt
-	claims["updated_at"] = user_data.UpdatedAt
-	claims["exp"] = time.Now().Add(config.AuthTimeCache).Unix()
+
+	if isRefresh {
+		claims["identity_number"] = user_data.IdentityNumber
+		claims["username"] = user_data.Username
+		claims["phone_number"] = user_data.PhoneNumber
+		claims["date_of_birth"] = user_data.DateOfBirth
+		claims["auth_key"] = user_data.AuthKey
+		claims["used_pin"] = user_data.UsedPin
+		claims["is_google_account"] = user_data.IsGoogleAccount
+		claims["status_account"] = user_data.StatusAccount
+		claims["login_ip"] = user_data.LoginIp
+		claims["login_attempts"] = user_data.LoginAttempts
+		claims["login_time"] = user_data.LoginTime
+		claims["created_at"] = user_data.CreatedAt
+		claims["updated_at"] = user_data.UpdatedAt
+	}
+	// claims["exp"] = time.Now().Add(config.AuthTimeCache).Unix()
+
+	if isRefresh {
+		claims["exp"] = time.Now().Add(config.RefreshAuthTimeCache).Unix()
+		claims["typ"] = "refresh"
+		claims["jti"] = uuid.New().String()
+	} else {
+		claims["exp"] = time.Now().Add(config.AuthTimeCache).Unix()
+		claims["typ"] = "access"
+	}
 
 	t, err := token.SignedString([]byte(config.SecretKey))
 	if err != nil {
 		return "", err
+	}
+
+	if isRefresh {
+		err = database.RedisDb.Set(database.RedisCtx, "refresh:"+user_data.IdAccount, t, config.RefreshAuthTimeCache).Err()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return t, nil
@@ -155,5 +177,55 @@ func ValidateUserLoginIp(user_data models.UserData, c *fiber.Ctx) error {
 		return errors.New("you're login in new IP, please identify yourself first")
 	}
 
+	return nil
+}
+
+func GenerateRefreshToken(user_data models.UserData) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS512)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id_account"] = user_data.IdAccount
+	claims["username"] = user_data.Username
+	claims["email"] = user_data.Email
+	claims["typ"] = "refresh"
+	claims["exp"] = time.Now().Add(7 * 24 * time.Hour).Unix()
+
+	claims["jti"] = uuid.New().String()
+
+	t, err := token.SignedString([]byte(config.SecretKey))
+	if err != nil {
+		return "", err
+	}
+
+	err = database.RedisDb.Set(database.RedisCtx, "refresh:"+user_data.IdAccount, t, 7*24*time.Hour).Err()
+	if err != nil {
+		return "", err
+	}
+
+	return t, nil
+}
+
+func IsTokenBlacklisted(jti string) bool {
+	// Check if the jti exists in the blacklist
+	val, err := database.RedisDb.Get(database.RedisCtx, "blacklist:"+jti).Result()
+	if err == redis.Nil {
+		// Token is not blacklisted
+		return false
+	}
+	if err != nil {
+		// Error with Redis
+		return true
+	}
+
+	// If a value is found, it's blacklisted
+	return val == "1"
+}
+
+// Add a token to the blacklist
+func BlacklistToken(jti string) error {
+	err := database.RedisDb.Set(database.RedisCtx, "blacklist:"+jti, "1", time.Hour*24).Err()
+	if err != nil {
+		return err
+	}
 	return nil
 }

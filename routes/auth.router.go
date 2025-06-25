@@ -12,8 +12,12 @@ func AuthRoutes(app *fiber.App) {
 
 	auth.Get("/get-google-client-id", services.LoadGoogleLoginClienId)
 
+	auth.Post("/less-secure/login", middleware.ValidateCaptcha, services.Login)
+	auth.Post("/less-secure/refresh-token", middleware.ValidateCaptcha, services.RefreshAuth)
+
 	auth.Get("/logout", services.LogoutWeb)
 	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
+	auth.Post("/refresh-token", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RefreshAuth)
 	auth.Post("/login-with-google", middleware.ValidateCaptcha, middleware.CsrfProtection, services.LoginWithGoogle)
 	auth.Post("/request-reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RequestResetPassword)
 	auth.Post("/reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ResetPassword)

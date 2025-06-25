@@ -130,7 +130,7 @@ func LoginWithGoogle(c *fiber.Ctx) error {
 		}
 	}
 
-	token, err := handlers.GenerateTokenJWT(user_data, c)
+	token, err := handlers.GenerateTokenJWT(user_data, false)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
 	}

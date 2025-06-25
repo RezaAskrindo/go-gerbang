@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"go-gerbang/config"
+	"go-gerbang/database"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
 	"go-gerbang/models"
@@ -211,7 +214,13 @@ func Login(c *fiber.Ctx) error {
 		}
 	}
 
-	token, err := handlers.GenerateTokenJWT(user_data, c)
+	// refreshToken, err := handlers.GenerateRefreshToken(user_data)
+	refreshToken, err := handlers.GenerateTokenJWT(user_data, true)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to generate new refresh token"))
+	}
+
+	token, err := handlers.GenerateTokenJWT(user_data, false)
 	if err != nil {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
@@ -220,9 +229,19 @@ func Login(c *fiber.Ctx) error {
 		if domain == "" {
 			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
 		} else {
+			c.Cookie(&fiber.Cookie{
+				Name:     middleware.CookieRefreshJWT,
+				Value:    refreshToken,
+				HTTPOnly: true,
+				Secure:   true,
+				SameSite: "Strict",
+				Expires:  time.Now().Add(config.RefreshAuthTimeCache),
+			})
+
 			cookie := new(fiber.Cookie)
 			cookie.Name = middleware.CookieJWT
 			cookie.Value = "Bearer " + token
+			cookie.Expires = time.Now().Add(config.AuthTimeCache)
 			cookie.HTTPOnly = true
 			cookie.Domain = domain
 			cookie.Secure = config.SecureCookies
@@ -235,8 +254,9 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	res := fiber.Map{
-		"userData": user_data,
-		"token":    token,
+		"userData":     user_data,
+		"token":        token,
+		"refreshToken": refreshToken,
 	}
 
 	return handlers.SuccessResponse(c, true, "Success Login", res, nil)
@@ -397,4 +417,83 @@ func ResetPassword(c *fiber.Ctx) error {
 	}
 
 	return handlers.SuccessResponse(c, true, "Reset Password Berhasil, Silahkan Login Kembali", nil, nil)
+}
+
+func RefreshAuth(c *fiber.Ctx) error {
+	token := c.Get("Authorization")
+	if token == "" {
+		token = c.Cookies(middleware.CookieRefreshJWT)
+	}
+
+	if token == "" {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("missing refresh token"))
+	}
+
+	var refreshToken string
+	if strings.HasPrefix(token, "Bearer ") {
+		refreshToken = token[len("Bearer "):]
+	} else {
+		refreshToken = token
+	}
+
+	user, err := middleware.Verify(refreshToken, "refresh")
+	if err != nil {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid refresh token"))
+	}
+
+	jti := user.Jti
+	if jti == nil || *jti == "" || handlers.IsTokenBlacklisted(*jti) {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("this refresh token is no longer valid"))
+	}
+
+	database.RedisDb.Del(database.RedisCtx, "refresh:"+user.IdAccount)
+
+	newRefreshToken, err := handlers.GenerateTokenJWT(*user, true)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to generate new refresh token"))
+	}
+
+	accessToken, err := handlers.GenerateTokenJWT(*user, false)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to generate access token"))
+	}
+
+	httponly := c.QueryBool("httponly")
+	domain := c.Query("domain")
+
+	if httponly { // HTTPONLY QUERY
+		if domain == "" {
+			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
+		} else {
+			c.Cookie(&fiber.Cookie{
+				Name:     middleware.CookieRefreshJWT,
+				Value:    newRefreshToken,
+				HTTPOnly: true,
+				Secure:   true,
+				SameSite: "Strict",
+				Expires:  time.Now().Add(config.RefreshAuthTimeCache),
+			})
+
+			cookie := new(fiber.Cookie)
+			cookie.Name = middleware.CookieJWT
+			cookie.Value = "Bearer " + accessToken
+			cookie.Expires = time.Now().Add(config.AuthTimeCache)
+			cookie.HTTPOnly = true
+			cookie.Domain = domain
+			cookie.Secure = config.SecureCookies
+			cookie.SameSite = config.CookieSameSite
+			cookie.SessionOnly = false
+			c.Cookie(cookie)
+
+			return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user, nil)
+		}
+	}
+
+	res := fiber.Map{
+		"userData":     user,
+		"token":        accessToken,
+		"refreshToken": newRefreshToken,
+	}
+
+	return handlers.SuccessResponse(c, true, "Refresh token rotated", res, nil)
 }

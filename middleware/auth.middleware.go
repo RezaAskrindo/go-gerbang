@@ -26,13 +26,14 @@ import (
 // var StorageRedisFiber = redis.New()
 
 const (
-	UserId        = "userId"
-	AuthKey       = "authKey"
-	Username      = "username"
-	FullName      = "fullName"
-	UserActive    = "user-active"
-	CookieJWT     = "__SGJwt"
-	CookieSession = "__SGSession"
+	UserId           = "userId"
+	AuthKey          = "authKey"
+	Username         = "username"
+	FullName         = "fullName"
+	UserActive       = "user-active"
+	CookieJWT        = "__SGJwt"
+	CookieRefreshJWT = "__SGRefreshJwt"
+	CookieSession    = "__SGSession"
 )
 
 var SessionStore = session.New(session.Config{
@@ -151,14 +152,13 @@ func ValidateCaptcha(c *fiber.Ctx) error {
 func Auth(c *fiber.Ctx) error {
 	h := c.Get("Authorization")
 
-	cookie := c.Cookies("__SGJwt")
+	cookie := c.Cookies(CookieJWT)
 
 	if h == "" && cookie == "" {
 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you don't have authorization"))
 	}
 
 	var chunks []string
-	// Spliting the header
 	if h != "" {
 		chunks = strings.Split(h, " ")
 	} else if cookie != "" {
@@ -169,27 +169,28 @@ func Auth(c *fiber.Ctx) error {
 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("missing or malformed JWT"))
 	}
 
-	user, err := Verify(chunks[1])
+	user, err := Verify(chunks[1], "access")
 	if err != nil {
 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("invalid or expired JWT"))
 	}
 
-	c.Locals("id_account", user.IdAccount)
-	c.Locals("identity_number", user.IdentityNumber)
-	c.Locals("username", user.Username)
-	c.Locals("full_name", user.FullName)
-	c.Locals("email", user.Email)
-	c.Locals("phone_number", user.PhoneNumber)
-	c.Locals("date_of_birth", user.DateOfBirth)
-	c.Locals("auth_key", user.AuthKey)
-	c.Locals("used_pin", user.UsedPin)
-	c.Locals("is_google_account", user.IsGoogleAccount)
-	c.Locals("status_account", user.StatusAccount)
-	c.Locals("login_ip", user.LoginIp)
-	c.Locals("login_attempts", user.LoginAttempts)
-	c.Locals("login_time", user.LoginTime)
-	c.Locals("created_at", user.CreatedAt)
-	c.Locals("updated_at", user.UpdatedAt)
+	c.Locals("user", user)
+	// c.Locals("id_account", user.IdAccount)
+	// c.Locals("identity_number", user.IdentityNumber)
+	// c.Locals("username", user.Username)
+	// c.Locals("full_name", user.FullName)
+	// c.Locals("email", user.Email)
+	// c.Locals("phone_number", user.PhoneNumber)
+	// c.Locals("date_of_birth", user.DateOfBirth)
+	// c.Locals("auth_key", user.AuthKey)
+	// c.Locals("used_pin", user.UsedPin)
+	// c.Locals("is_google_account", user.IsGoogleAccount)
+	// c.Locals("status_account", user.StatusAccount)
+	// c.Locals("login_ip", user.LoginIp)
+	// c.Locals("login_attempts", user.LoginAttempts)
+	// c.Locals("login_time", user.LoginTime)
+	// c.Locals("created_at", user.CreatedAt)
+	// c.Locals("updated_at", user.UpdatedAt)
 
 	return c.Next()
 }
@@ -204,12 +205,12 @@ func parse(token string) (*jwt.Token, error) {
 	})
 }
 
-func Verify(token string) (*models.UserData, error) {
+func Verify(token string, expectedType string) (*models.UserData, error) {
 	parsed, err := parse(token)
 
-	if err != nil {
+	if err != nil || !parsed.Valid {
 		// return nil, err
-		return nil, errors.New("something went wrong on parse")
+		return nil, errors.New("something went wrong on parse or validation")
 	}
 
 	// Parsing token claims
@@ -219,73 +220,95 @@ func Verify(token string) (*models.UserData, error) {
 		return nil, errors.New("something went wrong on claims")
 	}
 
+	typ, ok := claims["typ"].(string)
+	if !ok || typ != expectedType {
+		return nil, fmt.Errorf("invalid token type: expected %s, got %v", expectedType, typ)
+	}
+
 	// Getting ID, it's an interface{} so I need to cast it to uint
 	// JIKA TYPE INT GANTI KE FLOAT64
-	id_account, ok := claims["id_account"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on id account")
-	}
-	identity_number, ok := claims["identity_number"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on identity number")
-	}
-	username, ok := claims["username"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on username")
-	}
-	full_name, ok := claims["full_name"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on full name")
-	}
-	email, ok := claims["email"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on email")
-	}
-	phone_number, ok := claims["phone_number"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on phone number")
-	}
+	// id_account, ok := claims["id_account"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on id account")
+	// }
+	// identity_number, ok := claims["identity_number"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on identity number")
+	// }
+	// username, ok := claims["username"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on username")
+	// }
+	// full_name, ok := claims["full_name"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on full name")
+	// }
+	// email, ok := claims["email"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on email")
+	// }
+	// phone_number, ok := claims["phone_number"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on phone number")
+	// }
 	// TIPE NULL MASIH BELUM KEDETEKSI
 	// date_of_birth, ok := claims["date_of_birth"].(*time.Time)
 	// if !ok {
 	// 	return nil, errors.New("something went wrong on date of birth")
 	// }
-	auth_key, ok := claims["auth_key"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on auth key")
-	}
-	used_pin, ok := claims["used_pin"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on used_pin")
-	}
-	is_google_account, ok := claims["is_google_account"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on is google account")
-	}
-	status_account, ok := claims["status_account"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on status account")
-	}
-	login_ip, ok := claims["login_ip"].(string)
-	if !ok {
-		return nil, errors.New("something went wrong on login_ip")
-	}
-	login_attempts, ok := claims["login_attempts"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on login_attempts")
-	}
-	login_time, ok := claims["login_time"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on login_time")
-	}
-	created_at, ok := claims["created_at"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on created_at")
-	}
-	updated_at, ok := claims["updated_at"].(float64)
-	if !ok {
-		return nil, errors.New("something went wrong on updated_at")
-	}
+	// auth_key, ok := claims["auth_key"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on auth key")
+	// }
+	// used_pin, ok := claims["used_pin"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on used_pin")
+	// }
+	// is_google_account, ok := claims["is_google_account"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on is google account")
+	// }
+	// status_account, ok := claims["status_account"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on status account")
+	// }
+	// login_ip, ok := claims["login_ip"].(string)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on login_ip")
+	// }
+	// login_attempts, ok := claims["login_attempts"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on login_attempts")
+	// }
+	// login_time, ok := claims["login_time"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on login_time")
+	// }
+	// created_at, ok := claims["created_at"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on created_at")
+	// }
+	// updated_at, ok := claims["updated_at"].(float64)
+	// if !ok {
+	// 	return nil, errors.New("something went wrong on updated_at")
+	// }
+
+	id_account, _ := claims["id_account"].(string)
+	identity_number, _ := claims["identity_number"].(string)
+	username, _ := claims["username"].(string)
+	full_name, _ := claims["full_name"].(string)
+	email, _ := claims["email"].(string)
+	phone_number, _ := claims["phone_number"].(string)
+	auth_key, _ := claims["auth_key"].(string)
+	used_pin, _ := toInt8(claims["used_pin"])
+	is_google_account, _ := toInt8(claims["is_google_account"])
+	status_account, _ := toInt8(claims["status_account"])
+	login_ip, _ := claims["login_ip"].(string)
+	login_attempts, _ := toInt8(claims["login_attempts"])
+	login_time, _ := toInt64(claims["login_time"])
+	created_at, _ := toInt(claims["created_at"])
+	updated_at, _ := toInt(claims["updated_at"])
+	jti, _ := claims["jti"].(string)
 
 	return &models.UserData{
 		IdAccount:      string(id_account),
@@ -304,7 +327,29 @@ func Verify(token string) (*models.UserData, error) {
 		LoginTime:       int64(login_time),
 		CreatedAt:       int(created_at),
 		UpdatedAt:       int(updated_at),
+		Jti:             &jti,
 	}, nil
+}
+
+func toInt8(value interface{}) (int8, error) {
+	if f, ok := value.(float64); ok {
+		return int8(f), nil
+	}
+	return 0, nil
+}
+
+func toInt64(value interface{}) (int64, error) {
+	if f, ok := value.(float64); ok {
+		return int64(f), nil
+	}
+	return 0, nil
+}
+
+func toInt(value interface{}) (int, error) {
+	if f, ok := value.(float64); ok {
+		return int(f), nil
+	}
+	return 0, nil
 }
 
 func ValidateSession(c *fiber.Ctx) error {

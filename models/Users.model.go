@@ -53,6 +53,7 @@ type UserData struct {
 	LoginTime       int64      `json:"loginTime"`
 	CreatedAt       int        `json:"-"`
 	UpdatedAt       int        `json:"-"`
+	Jti             *string
 }
 
 type UserDataResponse struct {

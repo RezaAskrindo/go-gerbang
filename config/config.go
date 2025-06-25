@@ -28,10 +28,11 @@ var ConfigPath = Config("CONFIG_PATH_JSON")
 
 var APP_PORT = Config("PORT_APIGATEWAY")
 
-var AuthTimeCache = 86400 * time.Second
-var CsrfTimeCache = 3600 * time.Second
+var AuthTimeCache = 1 * time.Hour
+var RefreshAuthTimeCache = 24 * 14 * time.Hour
+var CsrfTimeCache = 1 * time.Second
 
-var RedisTimeCache = 10800 * time.Second
+var RedisTimeCache = 12 * time.Hour
 
 var SecretKey = Config("SECRET_KEY_APIGATEWAY")
 var CookieKey = Config("KEY_COOKIE_APIGATEWAY")

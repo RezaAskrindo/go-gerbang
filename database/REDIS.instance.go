@@ -1,12 +1,14 @@
 package database
 
 import (
-	"github.com/redis/go-redis/v9"
+	"context"
+
 	"go-gerbang/config"
+
+	"github.com/redis/go-redis/v9"
 )
 
-// var RedisAddrs = config.Config("REDIS_ADDRES")
-// var RedisAddrsFull = config.Config("REDIS_ADDRESS_FULL")
+var RedisCtx = context.Background()
 
 var RedisDb = redis.NewClient(&redis.Options{
 	Addr:    config.Config("REDIS_ADDRES"),
