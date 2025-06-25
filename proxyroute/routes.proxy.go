@@ -86,6 +86,8 @@ func RegisterRoutes(app *fiber.App) {
 			app.Use(service.Path, middleware.CsrfProtection, middleware.Auth, authz.RoutePermission(), proxyHandler(service))
 		} else if service.AuthProtection && service.CsrfProtection {
 			app.Use(service.Path, middleware.CsrfProtection, middleware.Auth, proxyHandler(service))
+		} else if service.AuthProtection {
+			app.Use(service.Path, middleware.Auth, proxyHandler(service))
 		} else {
 			app.Use(service.Path, proxyHandler(service))
 		}
