@@ -39,11 +39,10 @@ var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 
 // var SecureCookies bool
 var SecureCookiesString = Config("SECURE_COOKIES")
-var SecureCookies = true
 var CookieSameSite = Config("COOKIES_SAME_SITE")
 
 // DEV
-// var SecureCookies = false  //change true to prod false to dev
+var SecureCookies = false //change true to prod false to dev
 // var CookieSameSite = "Lax" //change None to prod Lax to dev
 
 // PROD
@@ -51,4 +50,4 @@ var CookieSameSite = Config("COOKIES_SAME_SITE")
 // var CookieSameSite = "None" //change None to prod Lax to dev
 
 // SIKA REPOSITORY
-var SikaRepoURL = Config("SIKA_REPO_URL")
+// var SikaRepoURL = Config("SIKA_REPO_URL")

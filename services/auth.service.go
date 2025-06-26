@@ -233,9 +233,10 @@ func Login(c *fiber.Ctx) error {
 				Name:     middleware.CookieRefreshJWT,
 				Value:    refreshToken,
 				HTTPOnly: true,
-				Secure:   true,
+				Secure:   config.SecureCookies,
 				SameSite: "Strict",
 				Expires:  time.Now().Add(config.RefreshAuthTimeCache),
+				Domain:   domain,
 			})
 
 			cookie := new(fiber.Cookie)
@@ -469,9 +470,10 @@ func RefreshAuth(c *fiber.Ctx) error {
 				Name:     middleware.CookieRefreshJWT,
 				Value:    newRefreshToken,
 				HTTPOnly: true,
-				Secure:   true,
+				Secure:   config.SecureCookies,
 				SameSite: "Strict",
 				Expires:  time.Now().Add(config.RefreshAuthTimeCache),
+				Domain:   domain,
 			})
 
 			cookie := new(fiber.Cookie)

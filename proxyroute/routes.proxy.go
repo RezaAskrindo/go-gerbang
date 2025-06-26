@@ -3,6 +3,7 @@ package proxyroute
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -79,6 +80,10 @@ func RegisterRoutes(app *fiber.App) {
 		Unauthorized: func(c *fiber.Ctx) error {
 			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have access"))
 		},
+	})
+
+	sort.Slice(handlers.MapMicroService.Services, func(i, j int) bool {
+		return len(handlers.MapMicroService.Services[i].Path) > len(handlers.MapMicroService.Services[j].Path)
 	})
 
 	for _, service := range handlers.MapMicroService.Services {

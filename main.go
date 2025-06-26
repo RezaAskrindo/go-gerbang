@@ -15,6 +15,7 @@ import (
 	// "go-gerbang/docs"
 
 	"github.com/goccy/go-json"
+	"github.com/gofiber/contrib/circuitbreaker"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/earlydata"
@@ -68,7 +69,6 @@ func main() {
 		// StrictRouting:         true,
 		// Prefork:       true,
 	})
-	// defer app.Shutdown()c
 
 	app.Use(healthcheck.New(healthcheck.Config{
 		LivenessProbe: func(c *fiber.Ctx) bool {
@@ -81,6 +81,7 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.Config("ALLOW_ORIGINS"),
+		AllowHeaders:     "Authorization, Content-Type",
 		AllowCredentials: true,
 	}))
 
@@ -115,6 +116,14 @@ func main() {
 
 	app.Use(earlydata.New())
 
+	cb := circuitbreaker.New(circuitbreaker.Config{
+		FailureThreshold: 3,               // Max failures before opening the circuit
+		Timeout:          5 * time.Second, // Wait time before retrying
+		SuccessThreshold: 2,               // Required successes to move back to closed state
+	})
+
+	app.Use(circuitbreaker.Middleware(cb))
+
 	// logger, _ := zap.NewProduction()
 	// defer logger.Sync()
 
@@ -138,6 +147,13 @@ func main() {
 	routes.AuthRoutes(app)
 
 	proxyroute.MainProxyRoutes(app)
+
+	app.Get("/health/circuit", cb.HealthHandler())
+
+	// Optional: Expose metrics about the circuit breaker:
+	app.Get("/metrics/circuit", func(c *fiber.Ctx) error {
+		return c.JSON(cb.GetStateStats())
+	})
 
 	app.Use("*", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
