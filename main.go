@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"time"
 
 	"go-gerbang/broker"
@@ -35,6 +36,8 @@ import (
 const (
 	appName = "GO Gerbang"
 )
+
+var allowedOriginRegex = regexp.MustCompile(`^(https:\/\/([a-z0-9-]+\.)?siskor\.web\.id|http:\/\/localhost(:[0-9]+)?)$`)
 
 // @termsOfService http://swagger.io/terms/
 // @contact.name Muhammad Reza
@@ -80,9 +83,13 @@ func main() {
 	app.Use(idempotency.New())
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     config.Config("ALLOW_ORIGINS"),
-		AllowHeaders:     "Authorization, Content-Type",
+		// AllowOrigins:     config.Config("ALLOW_ORIGINS"),
+		AllowOriginsFunc: func(origin string) bool {
+			return allowedOriginRegex.MatchString(origin)
+		},
+		AllowHeaders:     "Authorization, Content-Type, X-Sgcsrf-Token",
 		AllowCredentials: true,
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 	}))
 
 	app.Use(helmet.New(helmet.Config{

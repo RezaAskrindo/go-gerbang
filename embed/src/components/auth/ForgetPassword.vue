@@ -8,20 +8,13 @@
       <form v-if="!isExpired" @submit.prevent="submitNewPassword" class="grid gap-4">
 
         <div class="grid gap-2">
-          <div class="flex items-center">
-            <Label>New Password</Label>
-            <Button @click="toggleShowPassword" class="ml-auto text-sm !h-0" variant="link">
-              <span v-if="showPassword">Show</span>
-              <span v-else>Hide</span>
-              Password
-            </Button>
-          </div>
-          <Input v-model="form.password" class="z-10" :type="showPassword ? 'password' : 'text'" placeholder="New Password" required />
+          <Label>New Password</Label>
+          <Input v-model="form.password" class="z-10" placeholder="New Password" :use-password-show="true" required />
         </div>
 
         <div class="grid gap-2">
           <Label>Repeat Password</Label>
-          <Input v-model="form.passwordConfirm" class="z-10" :type="showPassword ? 'password' : 'text'" placeholder="Repeat Password" required />
+          <Input v-model="form.passwordConfirm" class="z-10" placeholder="Repeat Password" :use-password-show="true" required />
         </div>
 
         <div class="flex justify-center">
@@ -72,9 +65,6 @@ const router = useRouter();
 
 const isExpired = ref(false);
 
-const showPassword = ref(true);
-const toggleShowPassword = () => showPassword.value = !showPassword.value
-
 const form: ResetPassword = reactive({
   password: '',
   passwordConfirm: '',
@@ -102,7 +92,7 @@ async function submitNewPassword() {
     } else {
       result = await response.json();
       toast.error(result?.message);
-      window.history.back();
+      router.push(`/auth/login${pathQuery.value}`)
     }
   } catch(err) {
     toast.error('Error occurred while filling new password. Please try again later.');

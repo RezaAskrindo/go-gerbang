@@ -332,10 +332,13 @@ func RequestResetPassword(c *fiber.Ctx) error {
 		Sender = QuerySender
 	}
 
-	BaseUrl := c.Query("url")
+	BaseUrl := c.Query("baseUrl")
 	if BaseUrl == "" {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base url params"))
 	}
+
+	rawQuery := c.Context().URI().QueryString()
+	queryStr := string(rawQuery)
 
 	sendEmail := new(types.SendingEmailToBroker)
 	sendEmail.Sender = Sender
@@ -345,13 +348,13 @@ func RequestResetPassword(c *fiber.Ctx) error {
 	
 	for reset password please click link below:
 		
-	` + BaseUrl + `/forget-password?token=` + randomReset + `
+	` + BaseUrl + `/auth/forget-password?token=` + randomReset + `
 
 	this link only active in 24 hours`
 	sendEmail.Body = `Hi ` + user.FullName + `<br/> 
 		for reset password please click link below:
 		<div style="padding-top:30px;padding-bottom:28px;text-align:center">
-			<a href='` + BaseUrl + `/forget-password?token=` + randomReset + `' style="font-family:'Google Sans',Roboto,RobotoDraft,Helvetica,Arial,sans-serif;line-height:16px;color:#ffffff;font-weight:400;text-decoration:none;font-size:14px;display:inline-block;padding:10px 24px;background-color:#171717;border-radius:5px;min-width:90px">Reset Link</a>
+			<a href='` + BaseUrl + `/auth/forget-password?token=` + randomReset + `&` + queryStr + `' style="font-family:'Google Sans',Roboto,RobotoDraft,Helvetica,Arial,sans-serif;line-height:16px;color:#ffffff;font-weight:400;text-decoration:none;font-size:14px;display:inline-block;padding:10px 24px;background-color:#171717;border-radius:5px;min-width:90px">Reset Link</a>
 		</div>
 		this link only active in 24 hours`
 	sendEmail.Footer = "you are receiving this mail from " + Sender

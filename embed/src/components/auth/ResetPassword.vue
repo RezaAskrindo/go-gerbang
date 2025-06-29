@@ -58,7 +58,7 @@ async function submitRequestResetPassword() {
   try {
     const getCsrf = await getCSRFToken();
 
-    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}&url=https://auth.siskor.web.id/auth`, {
+    const response = await fetch(`${baseHost}/api/v1/auth/request-reset-password${pathQuery.value}&baseUrl=https://auth.siskor.web.id/auth`, {
       method: 'POST',
       credentials: 'include',
       headers: {
