@@ -14,6 +14,10 @@ func AuthRoutes(app *fiber.App) {
 
 	auth.Post("/less-secure/login", middleware.ValidateCaptcha, services.Login)
 	auth.Post("/less-secure/refresh-token", middleware.ValidateCaptcha, services.RefreshAuth)
+	auth.Post("/less-secure/request-reset-password", middleware.ValidateCaptcha, services.RequestResetPassword)
+	auth.Post("/less-secure/reset-password", middleware.ValidateCaptcha, services.ResetPassword)
+	auth.Post("/less-secure/change-password", middleware.ValidateCaptcha, services.ChangePassword)
+	auth.Post("/less-secure/sign-up", services.Signup)
 
 	auth.Get("/logout", services.LogoutWeb)
 	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)

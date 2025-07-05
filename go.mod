@@ -7,6 +7,7 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/goccy/go-json v0.10.5
 	github.com/gofiber/contrib/casbin v1.0.18
+	github.com/gofiber/contrib/circuitbreaker v0.0.1
 	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -15,6 +16,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.11.4
 	github.com/nats-io/nats.go v1.42.0
 	github.com/redis/go-redis/v9 v9.9.0
+	github.com/resend/resend-go/v2 v2.20.0
 	github.com/steambap/captcha v1.4.1
 	github.com/swaggo/swag v1.16.4
 	github.com/valyala/fasthttp v1.62.0
@@ -47,7 +49,6 @@ require (
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/gofiber/contrib/circuitbreaker v0.0.1 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -71,7 +72,6 @@ require (
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
-	github.com/resend/resend-go/v2 v2.20.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

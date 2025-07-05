@@ -1,13 +1,11 @@
 package routes
 
 import (
-	// "go-gerbang/embed"
 	"go-gerbang/middleware"
 	"go-gerbang/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
-	// "github.com/gofiber/fiber/v2/middleware/filesystem"
 )
 
 var baseConfig = basicauth.Config{
@@ -17,12 +15,6 @@ var baseConfig = basicauth.Config{
 }
 
 func MainRoutes(app *fiber.App) {
-	// app.All("/embed/*", filesystem.New(filesystem.Config{
-	// 	Root:         embed.Dist(),
-	// 	NotFoundFile: "index.html",
-	// 	Index:        "index.html",
-	// }))
-
 	// GET CSRF TOKEN
 	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
 	app.Get("/secure-gateway-c-cookie", middleware.CsrfProtectionCookies, services.GetCSRFTokenService)

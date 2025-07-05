@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
 	"go-gerbang/models"
@@ -56,6 +57,12 @@ func LogoutWeb(c *fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to blacklist token"))
 	}
 
+	domain := c.Query("domain")
+
+	if domain == "" {
+		domain = "siskor.web.id"
+	}
+
 	c.Cookie(&fiber.Cookie{
 		Name:     middleware.CookieRefreshJWT,
 		Value:    "",
@@ -63,11 +70,17 @@ func LogoutWeb(c *fiber.Ctx) error {
 		HTTPOnly: true,
 		Secure:   true,
 		SameSite: "Strict",
+		Domain:   domain,
 	})
 
 	cookieJWT := new(fiber.Cookie)
 	cookieJWT.Name = middleware.CookieJWT
 	cookieJWT.Expires = time.Now().Add(-(time.Hour * 2))
+	cookieJWT.HTTPOnly = true
+	cookieJWT.Domain = domain
+	cookieJWT.Secure = config.SecureCookies
+	cookieJWT.SameSite = config.CookieSameSite
+	cookieJWT.SessionOnly = false
 	c.Cookie(cookieJWT)
 
 	redirectUrl := c.Query("redirectUrl")

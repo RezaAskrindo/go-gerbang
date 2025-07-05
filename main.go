@@ -37,7 +37,7 @@ const (
 	appName = "GO Gerbang"
 )
 
-var allowedOriginRegex = regexp.MustCompile(`^(https:\/\/([a-z0-9-]+\.)?siskor\.web\.id|http:\/\/localhost(:[0-9]+)?)$`)
+var allowedOriginRegex *regexp.Regexp
 
 // @termsOfService http://swagger.io/terms/
 // @contact.name Muhammad Reza
@@ -82,8 +82,8 @@ func main() {
 
 	app.Use(idempotency.New())
 
+	allowedOriginRegex, _ = regexp.Compile(config.Config("ALLOWED_ORIGIN_REGEX"))
 	app.Use(cors.New(cors.Config{
-		// AllowOrigins:     config.Config("ALLOW_ORIGINS"),
 		AllowOriginsFunc: func(origin string) bool {
 			return allowedOriginRegex.MatchString(origin)
 		},
