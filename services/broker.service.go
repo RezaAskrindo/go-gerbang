@@ -3,13 +3,16 @@ package services
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"go-gerbang/broker"
+	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/types"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nats-io/nats.go"
+	"github.com/valyala/fasthttp"
 )
 
 func PublishService(c *fiber.Ctx) error {
@@ -231,11 +234,33 @@ func handleMsg(msg *nats.Msg) {
 	</div>`
 	dataSend.Emails = email.Emails
 
-	// if !SendMail(dataSend) {
-	// 	log.Println("failed to send email")
-	// }
-	if !SendResendMail(dataSend) {
-		log.Println("failed to send email")
+	mailServiceName := config.Config("EMAIL_SERVICE_NAME")
+
+	if mailServiceName == "Resend" {
+		if !SendResendMail(dataSend) {
+			log.Println("failed to send email")
+		}
+	} else if mailServiceName == "SendAPI" {
+		req := fasthttp.AcquireRequest()
+		res := fasthttp.AcquireResponse()
+		defer fasthttp.ReleaseRequest(req)
+		defer fasthttp.ReleaseResponse(res)
+
+		req.Header.SetContentType("application/json")
+		req.Header.SetMethod("POST")
+		data := handlers.ToMarshal(dataSend)
+		req.SetBody(data)
+		req.SetRequestURI(config.Config("EMAIL_SERVICE") + "/send-email")
+
+		Client := fasthttp.Client{}
+
+		if err := Client.DoTimeout(req, res, 300*time.Second); err != nil {
+			log.Printf("error %s\n", err)
+		}
+	} else {
+		if !SendMail(dataSend) {
+			log.Println("failed to send email")
+		}
 	}
 
 	// log.Println("Success Subscribe Message")

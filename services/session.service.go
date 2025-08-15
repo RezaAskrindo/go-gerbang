@@ -169,31 +169,31 @@ func GetSessionJWT(c *fiber.Ctx) error {
 }
 
 func GetSession(c *fiber.Ctx) error {
-	// currSession, err := middleware.SessionStore.Get(c)
-	// if err != nil {
-	// 	return handlers.UnauthorizedErrorResponse(c, err)
-	// }
+	currSession, err := middleware.SessionStore.Get(c)
+	if err != nil {
+		return handlers.UnauthorizedErrorResponse(c, err)
+	}
 
-	// if len(currSession.Keys()) > 0 {
+	if len(currSession.Keys()) > 0 {
 
-	// 	userId, ok := currSession.Get(middleware.UserId).(string)
-	// 	if !ok {
-	// 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("session userId is null"))
-	// 	}
-	// 	authKey, _ := currSession.Get(middleware.AuthKey).(string)
-	// 	username, _ := currSession.Get(middleware.Username).(string)
-	// 	fullName, _ := currSession.Get(middleware.FullName).(string)
+		userId, ok := currSession.Get(middleware.UserId).(string)
+		if !ok {
+			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("session userId is null"))
+		}
+		authKey, _ := currSession.Get(middleware.AuthKey).(string)
+		username, _ := currSession.Get(middleware.Username).(string)
+		fullName, _ := currSession.Get(middleware.FullName).(string)
 
-	// 	data := new(models.UserData)
-	// 	data = &models.UserData{
-	// 		IdAccount: userId,
-	// 		AuthKey:   authKey,
-	// 		Username:  username,
-	// 		FullName:  fullName,
-	// 	}
+		data := new(models.UserData)
+		data = &models.UserData{
+			IdAccount: userId,
+			AuthKey:   authKey,
+			Username:  username,
+			FullName:  fullName,
+		}
 
-	// 	return handlers.SuccessResponse(c, true, "success get session", data, nil)
-	// }
+		return handlers.SuccessResponse(c, true, "success get session", data, nil)
+	}
 
 	return handlers.SuccessResponse(c, true, "no session", nil, nil)
 }

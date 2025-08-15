@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	tt "text/template"
+	"time"
 
 	"go-gerbang/config"
 	"go-gerbang/handlers"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/resend/resend-go/v2"
+	"github.com/valyala/fasthttp"
 	"github.com/wneessen/go-mail"
 )
 
@@ -51,43 +53,7 @@ func MailTesting(c *fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("please provide valid email"))
 	}
 
-	// from := config.Config(appName + "_CONFIG_AUTH_EMAIL")
-
-	// if !isValidEmail(from) {
-	// 	baseURL := "https://api2.callmebot.com/text.php"
-	// 	params := map[string]string{
-	// 		"user": "@Reza_aceh",
-	// 		"text": "config email not setup for " + appName,
-	// 	}
-	// 	fullURL, err := handlers.BuildURL(baseURL, params)
-	// 	if err != nil {
-	// 		log.Println("Error building URL:", err)
-	// 	}
-	// 	SendGetRequest(fullURL)
-	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("config email not setup for "+appName))
-	// }
-
-	// message := mail.NewMsg()
-	// if err := message.From(config.Config(appName + "_CONFIG_AUTH_EMAIL")); err != nil {
-	// 	log.Printf("failed to set From address: %s", err)
-	// 	return handlers.InternalServerErrorResponse(c, err)
-	// }
-	// if err := message.To(to); err != nil {
-	// 	log.Printf("failed to set To address: %s", err)
-	// 	return handlers.InternalServerErrorResponse(c, err)
-	// }
-
-	// message.Subject("Testing Email!")
-	// message.SetBodyString(mail.TypeTextPlain, "Testing email...")
-	// client, err := CreateMailClient(appName)
-	// if err != nil {
-	// 	log.Printf("failed to create mail client: %s", err)
-	// }
-	// if err := client.DialAndSend(message); err != nil {
-	// 	log.Printf("failed to send mail: %s", err)
-	// }
-
-	send := SendResendMail(&types.ListEmail{
+	dataSend := &types.ListEmail{
 		Sender:           appName,
 		Subject:          "Testing Email!",
 		BodyTemplateText: "Testing email...",
@@ -95,12 +61,52 @@ func MailTesting(c *fiber.Ctx) error {
 		Emails: []types.Email{
 			{Name: "Test User", EmailAddr: to},
 		},
-	})
-
-	if !send {
-		log.Printf("failed to send mail using Resend: %s", "error sending email")
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
 	}
+
+	tipe := c.Query("type")
+	if tipe == "event" {
+		PublishEvent("user.notification", dataSend)
+		return handlers.SuccessResponse(c, true, "Send Mail On Event Success", nil, nil)
+	}
+
+	mailServiceName := config.Config("EMAIL_SERVICE_NAME")
+
+	if mailServiceName == "Resend" {
+		if !SendResendMail(dataSend) {
+			log.Printf("failed to send mail using Resend: %s", "error sending email")
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
+		}
+	} else if mailServiceName == "SendAPI" {
+		req := fasthttp.AcquireRequest()
+		res := fasthttp.AcquireResponse()
+		defer fasthttp.ReleaseRequest(req)
+		defer fasthttp.ReleaseResponse(res)
+
+		req.Header.SetContentType("application/json")
+		req.Header.SetMethod("POST")
+		data := handlers.ToMarshal(dataSend)
+		req.SetBody(data)
+		req.SetRequestURI(config.Config("EMAIL_SERVICE") + "/send-email")
+
+		Client := fasthttp.Client{}
+
+		if err := Client.DoTimeout(req, res, 300*time.Second); err != nil {
+			log.Printf("failed to send mail using SendAPI: %s", "error sending email")
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
+		}
+	} else {
+		if !SendMail(dataSend) {
+			log.Printf("failed to send mail using Direct: %s", "error sending email")
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
+		}
+	}
+
+	// send := SendResendMail(dataSend)
+
+	// if !send {
+	// 	log.Printf("failed to send mail using Resend: %s", "error sending email")
+	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using Resend"))
+	// }
 
 	return handlers.SuccessResponse(c, true, "Check Mail Success", nil, nil)
 }
