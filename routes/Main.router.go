@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
+	"github.com/gofiber/fiber/v2/middleware/monitor"
 )
 
 var baseConfig = basicauth.Config{
@@ -25,7 +26,7 @@ func MainRoutes(app *fiber.App) {
 	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)
 	app.Get("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
 
-	app.Get("/info", basicauth.New(baseConfig), services.InfoService)
+	app.Get("/info", services.InfoService)
 
 	// PUB / SUB
 	app.Post("/publish", services.PublishService)
@@ -33,6 +34,13 @@ func MainRoutes(app *fiber.App) {
 
 	// MAIL
 	app.Get("/check-mail", services.MailTesting)
+
+	// SERVICE
+	app.Post("/restart", services.RestartHandler)
+	app.Post("/config-file", services.HandleConfigFile)
+
+	app.Get("/log-stats-proxy", services.GetStatsLogProxy)
+	app.Get("/metrics", monitor.New(monitor.Config{APIOnly: true}))
 
 	// services.SubscribeServiceEmail()
 	services.SubscribeEvent()

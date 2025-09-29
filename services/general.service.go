@@ -1,12 +1,20 @@
 package services
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"runtime"
+	"syscall"
 	"time"
 
 	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/middleware"
+	"go-gerbang/models"
+	"go-gerbang/proxyroute"
+	"go-gerbang/types"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
@@ -53,9 +61,7 @@ func InfoService(c *fiber.Ctx) error {
 
 		handlers.MapMicroService.Services[i].Status = true
 
-		client := &fasthttp.Client{}
-		if err := client.Do(req, res); err != nil {
-			// fmt.Printf("Error: %s\n", err)
+		if err := proxyroute.ProxyClient.Do(req, res); err != nil {
 			handlers.MapMicroService.Services[i].Status = false
 		}
 
@@ -94,4 +100,122 @@ func SendGetRequest(url string) {
 		log.Printf("ERR HTTP Connection error: %v\n", err)
 	}
 	fasthttp.ReleaseResponse(resp)
+}
+
+func RestartHandler(c *fiber.Ctx) error {
+	go func() {
+		time.Sleep(1 * time.Second)
+
+		// Detect restart mode from ENV (optional override)
+		mode := config.Config("RESTART_MODE") // "exit", "exec", or "auto"
+
+		// Docker / K8s / systemd case
+		if mode == "exit" || os.Getenv("IN_DOCKER") == "true" {
+			os.Exit(0)
+			return
+		}
+
+		// Auto-detect by OS
+		if runtime.GOOS == "windows" {
+			// 🔹 Windows: spawn a new process, then exit
+			exe, err := os.Executable()
+			if err != nil {
+				panic(err)
+			}
+			args := os.Args[1:]
+			cmd := exec.Command(exe, args...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
+
+			if err := cmd.Start(); err != nil {
+				panic(err)
+			}
+			os.Exit(0)
+
+		} else {
+			// 🔹 Linux/macOS: replace process in-place
+			exe, err := os.Executable()
+			if err != nil {
+				panic(err)
+			}
+			args := os.Args
+			env := os.Environ()
+
+			if err := syscall.Exec(exe, args, env); err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	return c.JSON(fiber.Map{
+		"message": "Service restarting...",
+		"os":      runtime.GOOS,
+	})
+}
+
+func GetStatsLogProxy(c *fiber.Ctx) error {
+	layout := "2006-01-02T15:04:05.000Z07:00"
+
+	isDetail := c.QueryBool("detail")
+
+	fromStr := c.Query("from")
+	toStr := c.Query("to")
+
+	from := time.Now().AddDate(0, 0, -30)
+	to := time.Now()
+
+	if fromStr != "" {
+		parsedFrom, err := time.Parse(layout, fromStr)
+		if err != nil {
+			return handlers.BadRequestErrorResponse(c, fmt.Errorf("invalid from param"))
+		}
+		from = parsedFrom
+	}
+
+	if toStr != "" {
+		parsedTo, err := time.Parse(layout, toStr)
+		if err != nil {
+			return handlers.BadRequestErrorResponse(c, fmt.Errorf("invalid from param"))
+		}
+		to = parsedTo
+	}
+
+	if isDetail {
+		d := &[]models.LogProxy{}
+		service := c.Query("service")
+		method := c.Query("method")
+		path := c.Query("path")
+		status := c.Query("status")
+
+		err := models.FindLogProxy(d, service, method, path, status, from, to).Error
+		if err != nil {
+			return handlers.InternalServerErrorResponse(c, err)
+		}
+
+		return handlers.SuccessResponse(c, true, "success to get detail log proxy", d, nil)
+	} else {
+		d := &[]models.PathStats{}
+
+		err := models.FindStatsLogProxy(d, from, to).Error
+		if err != nil {
+			return handlers.InternalServerErrorResponse(c, err)
+		}
+
+		return handlers.SuccessResponse(c, true, "success to get stats log proxy", d, nil)
+	}
+}
+
+func HandleConfigFile(c *fiber.Ctx) error {
+	u := new(types.ConfigServices)
+
+	if err := handlers.ParseBody(c, u); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if err := handlers.SaveConfig(config.BasePath+config.ConfigPath, u); err != nil {
+		return handlers.InternalServerErrorResponse(c, err)
+	}
+
+	return handlers.SuccessResponse(c, true, "success update config file", u, nil)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/storage/redis/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
 )
@@ -23,7 +24,7 @@ import (
 // 	URL: config.Config("REDIS_ADDRESS_FULL"),
 // })
 
-// var StorageRedisFiber = redis.New()
+var StorageRedisFiber = redis.New()
 
 const (
 	UserId           = "userId"
@@ -45,7 +46,7 @@ var SessionStore = session.New(session.Config{
 	KeyGenerator: func() string {
 		return handlers.RandomStringV1(64)
 	},
-	// Storage:        StorageRedisFiber,
+	Storage: StorageRedisFiber,
 })
 
 var CsrfActivated = false
@@ -175,22 +176,6 @@ func Auth(c *fiber.Ctx) error {
 	}
 
 	c.Locals("user", user)
-	// c.Locals("id_account", user.IdAccount)
-	// c.Locals("identity_number", user.IdentityNumber)
-	// c.Locals("username", user.Username)
-	// c.Locals("full_name", user.FullName)
-	// c.Locals("email", user.Email)
-	// c.Locals("phone_number", user.PhoneNumber)
-	// c.Locals("date_of_birth", user.DateOfBirth)
-	// c.Locals("auth_key", user.AuthKey)
-	// c.Locals("used_pin", user.UsedPin)
-	// c.Locals("is_google_account", user.IsGoogleAccount)
-	// c.Locals("status_account", user.StatusAccount)
-	// c.Locals("login_ip", user.LoginIp)
-	// c.Locals("login_attempts", user.LoginAttempts)
-	// c.Locals("login_time", user.LoginTime)
-	// c.Locals("created_at", user.CreatedAt)
-	// c.Locals("updated_at", user.UpdatedAt)
 
 	return c.Next()
 }
@@ -224,74 +209,6 @@ func Verify(token string, expectedType string) (*models.UserData, error) {
 	if !ok || typ != expectedType {
 		return nil, fmt.Errorf("invalid token type: expected %s, got %v", expectedType, typ)
 	}
-
-	// Getting ID, it's an interface{} so I need to cast it to uint
-	// JIKA TYPE INT GANTI KE FLOAT64
-	// id_account, ok := claims["id_account"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on id account")
-	// }
-	// identity_number, ok := claims["identity_number"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on identity number")
-	// }
-	// username, ok := claims["username"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on username")
-	// }
-	// full_name, ok := claims["full_name"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on full name")
-	// }
-	// email, ok := claims["email"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on email")
-	// }
-	// phone_number, ok := claims["phone_number"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on phone number")
-	// }
-	// TIPE NULL MASIH BELUM KEDETEKSI
-	// date_of_birth, ok := claims["date_of_birth"].(*time.Time)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on date of birth")
-	// }
-	// auth_key, ok := claims["auth_key"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on auth key")
-	// }
-	// used_pin, ok := claims["used_pin"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on used_pin")
-	// }
-	// is_google_account, ok := claims["is_google_account"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on is google account")
-	// }
-	// status_account, ok := claims["status_account"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on status account")
-	// }
-	// login_ip, ok := claims["login_ip"].(string)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on login_ip")
-	// }
-	// login_attempts, ok := claims["login_attempts"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on login_attempts")
-	// }
-	// login_time, ok := claims["login_time"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on login_time")
-	// }
-	// created_at, ok := claims["created_at"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on created_at")
-	// }
-	// updated_at, ok := claims["updated_at"].(float64)
-	// if !ok {
-	// 	return nil, errors.New("something went wrong on updated_at")
-	// }
 
 	id_account, _ := claims["id_account"].(string)
 	identity_number, _ := claims["identity_number"].(string)

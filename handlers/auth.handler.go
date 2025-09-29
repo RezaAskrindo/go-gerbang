@@ -124,6 +124,7 @@ func GenerateTokenJWT(user_data models.UserData, isRefresh bool) (string, error)
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["id_account"] = user_data.IdAccount
+	claims["username"] = user_data.Username
 	claims["full_name"] = user_data.FullName
 	claims["email"] = user_data.Email
 

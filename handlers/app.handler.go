@@ -15,6 +15,7 @@ import (
 
 	"go-gerbang/types"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
@@ -36,10 +37,10 @@ func StructToMap(item interface{}) map[string]interface{} {
 	reflectValue := reflect.ValueOf(item)
 	reflectValue = reflect.Indirect(reflectValue)
 
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		tag := v.Field(i).Tag.Get("json")
 		field := reflectValue.Field(i).Interface()
 		if tag != "" && tag != "-" {
@@ -110,6 +111,53 @@ func LoadConfig(filename string) (*types.ConfigServices, error) {
 	}
 
 	return &config, nil
+}
+
+func WatchConfigFile(filename string) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(filename)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		select {
+		case event := <-watcher.Events:
+			// Only reload if the file was written to
+			if event.Op&(fsnotify.Write|fsnotify.Create) != 0 {
+				// fmt.Println("Config file changed, reloading...")
+				cfg, err := LoadConfig(filename)
+				if err != nil {
+					// fmt.Println("Error reloading config:", err)
+					continue
+				}
+				MapMicroServiceMutex.Lock()
+				MapMicroService = cfg
+				MapMicroServiceMutex.Unlock()
+				// fmt.Println("Config reloaded successfully")
+			}
+		case err := <-watcher.Errors:
+			fmt.Println("Watcher error:", err)
+		}
+	}
+}
+
+func SaveConfig(filename string, config *types.ConfigServices) error {
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Response

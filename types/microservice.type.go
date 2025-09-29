@@ -1,14 +1,15 @@
 package types
 
 type Service struct {
+	Service           string `json:"service"`
 	Path              string `json:"path"`
 	Url               string `json:"url"`
 	AuthProtection    bool   `json:"auth_protection"`
-	CsrfProtection    bool   `json:"csrf_protection"`
 	SessionProtection bool   `json:"session_protection"`
-	JwtProtection     bool   `json:"jwt_protection"`
+	CsrfProtection    bool   `json:"csrf_protection"`
 	RbacProtection    bool   `json:"rbac_protection"`
 	Status            bool   `json:"status"`
+	// JwtProtection     bool   `json:"jwt_protection"`
 }
 
 type ConfigServices struct {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
+	"go-gerbang/handlers"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 
@@ -29,8 +31,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	// "github.com/gofiber/swagger"
-	// "github.com/gofiber/contrib/fiberzap/v2"
-	// "go.uber.org/zap"
 )
 
 const (
@@ -64,7 +64,7 @@ func main() {
 		JSONEncoder:           json.Marshal,
 		JSONDecoder:           json.Unmarshal,
 		BodyLimit:             100 * 1024 * 1024, // this is the default limit of 100MB
-		ServerHeader:          appName,
+		ServerHeader:          "",
 		AppName:               appName,
 		CaseSensitive:         true,
 		DisableStartupMessage: true,
@@ -77,7 +77,7 @@ func main() {
 		LivenessProbe: func(c *fiber.Ctx) bool {
 			return true
 		},
-		LivenessEndpoint: "/",
+		LivenessEndpoint: "/live",
 	}))
 
 	app.Use(idempotency.New())
@@ -111,7 +111,7 @@ func main() {
 		Next: func(c *fiber.Ctx) bool {
 			return c.IP() == "127.0.0.1" // limit will apply to this IP
 		},
-		Max:        500,
+		Max:        1000,
 		Expiration: 60 * time.Second,
 		KeyGenerator: func(c *fiber.Ctx) string {
 			return c.Get("X-forwarded-for")
@@ -123,21 +123,6 @@ func main() {
 
 	app.Use(earlydata.New())
 
-	cb := circuitbreaker.New(circuitbreaker.Config{
-		FailureThreshold: 3,               // Max failures before opening the circuit
-		Timeout:          5 * time.Second, // Wait time before retrying
-		SuccessThreshold: 2,               // Required successes to move back to closed state
-	})
-
-	app.Use(circuitbreaker.Middleware(cb))
-
-	// logger, _ := zap.NewProduction()
-	// defer logger.Sync()
-
-	// app.Use(fiberzap.New(fiberzap.Config{
-	// 	Logger: logger,
-	// }))
-
 	// docs.SwaggerInfo.Title = appName
 	// docs.SwaggerInfo.Description = "This is an API for GO GERBANG Apigateway"
 	// docs.SwaggerInfo.Version = "1.0"
@@ -146,21 +131,32 @@ func main() {
 
 	// app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// app.Get("/", func(c *fiber.Ctx) error {
-	// 	return c.Send([]byte("Welcome to GO GERBANG"))
-	// })
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Send([]byte("Welcome to GO GERBANG - by Muhammad Reza"))
+	})
 
 	routes.MainRoutes(app)
 	routes.AuthRoutes(app)
 
-	proxyroute.MainProxyRoutes(app)
+	cb := circuitbreaker.New(circuitbreaker.Config{
+		FailureThreshold: 3,               // Max failures before opening the circuit
+		Timeout:          5 * time.Second, // Wait time before retrying
+		SuccessThreshold: 2,               // Required successes to move back to closed state
+	})
 
 	app.Get("/health/circuit", cb.HealthHandler())
-
-	// Optional: Expose metrics about the circuit breaker:
 	app.Get("/metrics/circuit", func(c *fiber.Ctx) error {
 		return c.JSON(cb.GetStateStats())
 	})
+
+	app.Use(circuitbreaker.Middleware(cb))
+
+	ctx := context.Background()
+	err = handlers.InitLogger(ctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize zap logger: %v", err)
+	}
+	proxyroute.MainProxyRoutes(app)
 
 	app.Use("*", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})

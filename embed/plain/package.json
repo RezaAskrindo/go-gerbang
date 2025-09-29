@@ -1,0 +1,42 @@
+{
+  "name": "gerbang",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build --force",
+    "lint": "eslint . --fix"
+  },
+  "dependencies": {
+    "@floating-ui/vue": "^1.1.7",
+    "@originjs/vite-plugin-federation": "^1.4.1",
+    "@tailwindcss/vite": "4.1.11",
+    "@vueuse/components": "^13.6.0",
+    "@vueuse/core": "^13.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "pinia": "^3.0.3",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "4.1.11",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1",
+    "vue-sonner": "^2.0.2"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.2",
+    "@types/node": "^24.1.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/eslint-config-typescript": "^14.6.0",
+    "@vue/tsconfig": "^0.7.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-vue": "^10.3.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.6",
+    "vue-tsc": "^3.0.4"
+  },
+  "packageManager": "pnpm@9.12.1+sha512.e5a7e52a4183a02d5931057f7a0dbff9d5e9ce3161e33fa68ae392125b79282a8a8a470a51dfc8a0ed86221442eb2fb57019b0990ed24fab519bf0e1bc5ccfc4"
+}
