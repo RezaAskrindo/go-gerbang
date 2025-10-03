@@ -40,7 +40,7 @@ export function LoginForm({
   ...props
 }: LoginFormProps) {
   
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({

@@ -94,7 +94,7 @@ const NavMain = () => {
       isActive: true,
       items: [
         {title: "user", url: "#/user"},
-        {title: "menu", url: "#/menu"},
+        {title: "rbac", url: "#/rbac"},
       ]
     }
   ]
@@ -210,7 +210,7 @@ function useAuth() {
 const routes: Record<string, React.ComponentType> = {
   "/": Dashboard,
   "/user": UserManagement,
-  "/menu": MenuManagement,
+  "/rbac": MenuManagement,
 };
 
 function AppRouter(): ReactNode {
@@ -231,23 +231,40 @@ function AppRouter(): ReactNode {
 }
 
 function App() {
-
   const loginSend = async (valuez:{ identity: string; password: string }) => {
-    const getCsrf = await FetchCsrfToken();
+    const doLogin = async () => {
+      const getCsrf = await FetchCsrfToken();
+      const url = `${BackendUrlBase}/api/v1/auth/login?httponly=true&session=true&domain=localhost&url=${FrontendUrl}`;
 
-    const url = `${BackendUrlBase}/api/v1/auth/login?httponly=true&session=true&domain=localhost&url=${FrontendUrl}`;
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json", 
+          "X-SGCsrf-Token": getCsrf 
+        },
+        body: JSON.stringify(valuez),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+      if (!data.status) {
+        throw new Error(data.message || "Failed to login");
+      }
+
+      return data;
+    };
 
     toast.promise(
-      fetch(url, {
-        method: "POST",
-        credentials: 'include',
-        headers: { "Content-Type": "application/json", 'X-SGCsrf-Token': getCsrf },
-        body: JSON.stringify(valuez),
-      }).then(async (res) => {
-        if (!res.ok) throw new Error("Request failed")
-        const data = await res.json()
-        if (!data.status) throw new Error(data.message || "Failed to login")
-        return data
+      doLogin().catch(async (err) => {
+        if (err.message === "CSRF validation failed") {
+          const retryData = await doLogin();
+          return retryData;
+        }
+        throw err;
       }),
       {
         loading: "Waiting...",

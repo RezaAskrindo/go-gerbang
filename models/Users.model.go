@@ -12,47 +12,49 @@ import (
 )
 
 type User struct {
-	IdAccount          uuid.UUID  `gorm:"type:uuid;primaryKey" json:"idAccount"`
-	IdentityNumber     string     `gorm:"default:null;size:64" json:"identityNumber"`
-	Username           string     `gorm:"not null;size:128;unique" json:"username" validate:"required"`
-	FullName           string     `gorm:"not null;size:128" json:"fullName" validate:"required"`
-	Email              string     `gorm:"default:null;size:128" json:"email"`
-	PhoneNumber        string     `gorm:"default:null;size:13" json:"phoneNumber"`
-	DateOfBirth        *time.Time `gorm:"default:null" json:"dateOfBirth"`
-	StatusAccount      int8       `gorm:"default:0" json:"statusAccount"`
-	AuthKey            string     `gorm:"default:null;size:32" json:"authKey"`
-	Password           string     `gorm:"-" json:"password"`
-	PasswordHash       string     `gorm:"default:null;size:256" json:"-"`
-	PasswordResetToken *string    `gorm:"default:null;size:256" json:"-"`
-	AccessToken        *string    `gorm:"default:null;size:256" json:"-"`
-	PinHash            *string    `gorm:"default:null;size:256" json:"-"`
-	UsedPin            int8       `gorm:"default:0" json:"usedPin"`
-	IsGoogleAccount    int8       `gorm:"default:0" json:"isGoogleAccount"`
-	LoginIp            string     `gorm:"default:null;size:32" json:"loginIp"`
-	LoginAttempts      int8       `gorm:"default:0" json:"loginAttempts"`
-	LoginTime          int64      `gorm:"default:0" json:"loginTime"`
-	CreatedAt          int        `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt          int        `gorm:"default:0;autoUpdateTime" json:"updatedAt"`
+	IdAccount          uuid.UUID        `gorm:"type:uuid;primaryKey" json:"idAccount"`
+	IdentityNumber     string           `gorm:"default:null;size:64" json:"identityNumber"`
+	Username           string           `gorm:"not null;size:128;unique" json:"username" validate:"required"`
+	FullName           string           `gorm:"not null;size:128" json:"fullName" validate:"required"`
+	Email              string           `gorm:"default:null;size:128" json:"email"`
+	PhoneNumber        string           `gorm:"default:null;size:13" json:"phoneNumber"`
+	DateOfBirth        *time.Time       `gorm:"default:null" json:"dateOfBirth"`
+	StatusAccount      int8             `gorm:"default:0" json:"statusAccount"`
+	AuthKey            string           `gorm:"default:null;size:32" json:"authKey"`
+	Password           string           `gorm:"-" json:"password"`
+	PasswordHash       string           `gorm:"default:null;size:256" json:"-"`
+	PasswordResetToken *string          `gorm:"default:null;size:256" json:"-"`
+	AccessToken        *string          `gorm:"default:null;size:256" json:"-"`
+	PinHash            *string          `gorm:"default:null;size:256" json:"-"`
+	UsedPin            int8             `gorm:"default:0" json:"usedPin"`
+	IsGoogleAccount    int8             `gorm:"default:0" json:"isGoogleAccount"`
+	LoginIp            string           `gorm:"default:null;size:32" json:"loginIp"`
+	LoginAttempts      int8             `gorm:"default:0" json:"loginAttempts"`
+	LoginTime          int64            `gorm:"default:0" json:"loginTime"`
+	CreatedAt          int              `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt          int              `gorm:"default:0;autoUpdateTime" json:"updatedAt"`
+	UserAssignments    []UserAssignment `gorm:"foreignKey:AccountId;references:IdAccount"`
 }
 
 type UserData struct {
 	// IdAccount       uuid.UUID  `json:"idAccount"`
-	IdAccount       string     `json:"idAccount"`
-	IdentityNumber  string     `json:"identityNumber"`
-	Username        string     `json:"username"`
-	FullName        string     `json:"fullName"`
-	Email           string     `json:"email"`
-	PhoneNumber     string     `json:"phoneNumber"`
-	DateOfBirth     *time.Time `json:"dateOfBirth"`
-	StatusAccount   int8       `json:"statusAccount"`
-	AuthKey         string     `json:"authKey"`
-	UsedPin         int8       `json:"usedPin"`
-	IsGoogleAccount int8       `json:"isGoogleAccount"`
-	LoginIp         string     `json:"loginIp"`
-	LoginAttempts   int8       `json:"loginAttempts"`
-	LoginTime       int64      `json:"loginTime"`
-	CreatedAt       int        `json:"-"`
-	UpdatedAt       int        `json:"-"`
+	IdAccount       string           `json:"idAccount"`
+	IdentityNumber  string           `json:"identityNumber"`
+	Username        string           `json:"username"`
+	FullName        string           `json:"fullName"`
+	Email           string           `json:"email"`
+	PhoneNumber     string           `json:"phoneNumber"`
+	DateOfBirth     *time.Time       `json:"dateOfBirth"`
+	StatusAccount   int8             `json:"statusAccount"`
+	AuthKey         string           `json:"authKey"`
+	UsedPin         int8             `json:"usedPin"`
+	IsGoogleAccount int8             `json:"isGoogleAccount"`
+	LoginIp         string           `json:"loginIp"`
+	LoginAttempts   int8             `json:"loginAttempts"`
+	LoginTime       int64            `json:"loginTime"`
+	UserAssignments []UserAssignment `gorm:"foreignKey:AccountId;references:IdAccount" json:"user_assignments"`
+	CreatedAt       int              `json:"-"`
+	UpdatedAt       int              `json:"-"`
 	Jti             *string
 }
 
@@ -128,7 +130,11 @@ func FindUserById(dest interface{}, idAccount interface{}) error {
 }
 
 func FindUserByIdentity(dest interface{}, username interface{}, email interface{}, phoneNumber interface{}, identityNumber interface{}) error {
-	err := database.GDB.Raw("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone_number = ? OR identity_number = ?", username, email, phoneNumber, identityNumber).First(dest).Error
+	// err := database.GDB.Raw("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR phone_number = ? OR identity_number = ?", username, email, phoneNumber, identityNumber).InnerJoins("UserAssignment").First(dest).Error
+	err := database.GDB.
+		Where("LOWER(users.username) = LOWER(?) OR LOWER(users.email) = LOWER(?) OR users.phone_number = ? OR users.identity_number = ?", username, email, phoneNumber, identityNumber).
+		Preload("UserAssignments").
+		First(dest).Error
 	if err != nil {
 		return err
 	}
@@ -151,6 +157,18 @@ func FindUserDataById(dest interface{}, accountId interface{}) *gorm.DB {
 	return FindUser(dest, "id_account = ?", accountId)
 }
 
-func HardDeleteUser(idAccount interface{}) *gorm.DB {
-	return database.GDB.Unscoped().Delete(&User{}, "id_account = ?", idAccount)
+// func HardDeleteUser(idAccount interface{}) *gorm.DB {
+// 	return database.GDB.Unscoped().Where("id_account = ?", idAccount).Delete(&User{})
+// }
+
+func HardDeleteUser(idAccount string) error {
+	tx := database.GDB.Unscoped().Where("id_account = ?", idAccount).Delete(&User{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return fmt.Errorf("no user found with id_account = %s", idAccount)
+	}
+
+	return nil
 }

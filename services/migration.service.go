@@ -3,7 +3,6 @@ package services
 import (
 	"go-gerbang/handlers"
 	"go-gerbang/models"
-	"log"
 
 	"go-gerbang/database"
 
@@ -30,7 +29,6 @@ func MigrationService(c *fiber.Ctx) error {
 }
 
 func MigrateAdminUser(c *fiber.Ctx) error {
-	log.Println("here")
 	if database.GDB.Migrator().HasTable(&models.User{}) {
 		errCreate := database.GDB.Create(&models.User{
 			Username:      "admin",

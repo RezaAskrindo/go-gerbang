@@ -101,24 +101,24 @@ func VerifyIdTokenGoogle(ctx context.Context, idToken string, audience string) (
 // SUPPORT FUNCTION
 func SendSafeUserData(user *models.User, randString string) models.UserData {
 	return models.UserData{
-		IdAccount:      user.IdAccount.String(),
-		IdentityNumber: user.IdentityNumber,
-		Username:       user.Username,
-		FullName:       user.FullName,
-		Email:          user.Email,
-		PhoneNumber:    user.PhoneNumber,
-		AuthKey:        randString,
-		StatusAccount:  user.StatusAccount,
-		UsedPin:        user.UsedPin,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-		LoginIp:        user.LoginIp,
-		LoginAttempts:  user.LoginAttempts,
-		LoginTime:      user.LoginTime,
+		IdAccount:       user.IdAccount.String(),
+		IdentityNumber:  user.IdentityNumber,
+		Username:        user.Username,
+		FullName:        user.FullName,
+		Email:           user.Email,
+		PhoneNumber:     user.PhoneNumber,
+		AuthKey:         randString,
+		StatusAccount:   user.StatusAccount,
+		UsedPin:         user.UsedPin,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
+		LoginIp:         user.LoginIp,
+		LoginAttempts:   user.LoginAttempts,
+		LoginTime:       user.LoginTime,
+		UserAssignments: user.UserAssignments,
 	}
 }
 
-// token := jwt.New(jwt.SigningMethodHS256)
 func GenerateTokenJWT(user_data models.UserData, isRefresh bool) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS512)
 
@@ -127,6 +127,8 @@ func GenerateTokenJWT(user_data models.UserData, isRefresh bool) (string, error)
 	claims["username"] = user_data.Username
 	claims["full_name"] = user_data.FullName
 	claims["email"] = user_data.Email
+	claims["status_account"] = user_data.StatusAccount
+	claims["user_assignments"] = user_data.UserAssignments
 
 	if isRefresh {
 		claims["identity_number"] = user_data.IdentityNumber
@@ -136,14 +138,12 @@ func GenerateTokenJWT(user_data models.UserData, isRefresh bool) (string, error)
 		claims["auth_key"] = user_data.AuthKey
 		claims["used_pin"] = user_data.UsedPin
 		claims["is_google_account"] = user_data.IsGoogleAccount
-		claims["status_account"] = user_data.StatusAccount
 		claims["login_ip"] = user_data.LoginIp
 		claims["login_attempts"] = user_data.LoginAttempts
 		claims["login_time"] = user_data.LoginTime
 		claims["created_at"] = user_data.CreatedAt
 		claims["updated_at"] = user_data.UpdatedAt
 	}
-	// claims["exp"] = time.Now().Add(config.AuthTimeCache).Unix()
 
 	if isRefresh {
 		claims["exp"] = time.Now().Add(config.RefreshAuthTimeCache).Unix()
@@ -207,22 +207,17 @@ func GenerateRefreshToken(user_data models.UserData) (string, error) {
 }
 
 func IsTokenBlacklisted(jti string) bool {
-	// Check if the jti exists in the blacklist
 	val, err := database.RedisDb.Get(database.RedisCtx, "blacklist:"+jti).Result()
 	if err == redis.Nil {
-		// Token is not blacklisted
 		return false
 	}
 	if err != nil {
-		// Error with Redis
 		return true
 	}
 
-	// If a value is found, it's blacklisted
 	return val == "1"
 }
 
-// Add a token to the blacklist
 func BlacklistToken(jti string) error {
 	err := database.RedisDb.Set(database.RedisCtx, "blacklist:"+jti, "1", time.Hour*24).Err()
 	if err != nil {

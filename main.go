@@ -136,7 +136,6 @@ func main() {
 	})
 
 	routes.MainRoutes(app)
-	routes.AuthRoutes(app)
 
 	cb := circuitbreaker.New(circuitbreaker.Config{
 		FailureThreshold: 3,               // Max failures before opening the circuit
@@ -156,6 +155,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize zap logger: %v", err)
 	}
+	routes.AuthRoutes(app)
 	proxyroute.MainProxyRoutes(app)
 
 	app.Use("*", func(c *fiber.Ctx) error {

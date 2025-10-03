@@ -29,10 +29,6 @@ import (
 func IndexService(c *fiber.Ctx) error {
 	csrfToken, _ := c.Locals(middleware.CsrfContextKey).(string)
 	return handlers.SuccessResponse(c, true, "success get csrf token", csrfToken, nil)
-	// if !ok {
-	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("error getting csrf"))
-	// }
-	// return c.SendString(csrfToken)
 }
 
 func GetCSRFTokenService(c *fiber.Ctx) error {

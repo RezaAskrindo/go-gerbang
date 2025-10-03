@@ -11,12 +11,15 @@ import (
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
+	_ "gorm.io/driver/postgres"
 )
 
 // DOMAINESIA NOT SUPPORT
@@ -332,4 +335,39 @@ func GenerateCaptcha(c *fiber.Ctx) error {
 	output := data.WriteImage(c)
 
 	return output
+}
+
+type CasbinRule struct {
+	ID    uint   `gorm:"primaryKey;autoIncrement"`
+	Ptype string `gorm:"size:255;uniqueIndex:unique_index"`
+	V0    string `gorm:"size:255;uniqueIndex:unique_index"`
+	V1    string `gorm:"size:255;uniqueIndex:unique_index"`
+	V2    string `gorm:"size:128;uniqueIndex:unique_index"`
+	V3    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+	V4    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+	V5    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+}
+
+func AuthRBAC(c *fiber.Ctx) error {
+	user, ok := c.Locals("user").(*models.UserData)
+	if !ok {
+		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("user not found"))
+	}
+
+	a, _ := gormadapter.NewAdapterByDBWithCustomTable(database.GDB, &CasbinRule{})
+	authz, err := casbin.NewEnforcer(config.BasePath+config.Config("CONFIG_PATH_CASBIN_MODEL"), a)
+	if err != nil {
+		log.Fatalf("error: enforcer: %s", err)
+	}
+
+	for _, ua := range user.UserAssignments {
+		role := fmt.Sprintf("role:%d", ua.AuthRoleId)
+		fmt.Println(role)
+		allowed, _ := authz.Enforce(role, c.Path(), c.Method())
+		if allowed {
+			return c.Next()
+		}
+	}
+
+	return handlers.ForbiddenErrorResponse(c, fmt.Errorf("your role don't have access"))
 }

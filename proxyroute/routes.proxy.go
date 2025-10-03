@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +13,7 @@ import (
 	"go-gerbang/models"
 	"go-gerbang/types"
 
-	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
-	"github.com/gofiber/contrib/casbin"
+	// fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/proxy"
 	"github.com/valyala/fasthttp"
@@ -49,6 +47,17 @@ var ProxyClient = &fasthttp.Client{
 	MaxConnWaitTimeout:       10 * time.Second,
 }
 
+type CasbinRule struct {
+	ID    uint   `gorm:"primaryKey;autoIncrement"`
+	Ptype string `gorm:"size:255;uniqueIndex:unique_index"`
+	V0    string `gorm:"size:255;uniqueIndex:unique_index"`
+	V1    string `gorm:"size:255;uniqueIndex:unique_index"`
+	V2    string `gorm:"size:128;uniqueIndex:unique_index"`
+	V3    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+	V4    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+	V5    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
+}
+
 func RegisterRoutes(app *fiber.App) {
 	handlers.MapMicroServiceMutex.RLock()
 	defer handlers.MapMicroServiceMutex.RUnlock()
@@ -56,22 +65,34 @@ func RegisterRoutes(app *fiber.App) {
 	proxy.WithClient(ProxyClient)
 
 	// RBAC PROTECTION
-	authz := casbin.New(casbin.Config{
-		ModelFilePath: config.BasePath + config.Config("CONFIG_PATH_CASBIN_MODEL"),
-		PolicyAdapter: fileadapter.NewAdapter(config.BasePath + config.Config("CONFIG_PATH_CASBIN_POLICY")),
-		Lookup: func(c *fiber.Ctx) string {
-			statusAccount, ok := c.Locals("status_account").(int8)
-			if !ok {
-				return ""
-			}
-			sub := strconv.Itoa(int(statusAccount))
+	// NEED AUTH PROTECTION
+	// a, _ := gormadapter.NewAdapterByDBWithCustomTable(database.GDB, &CasbinRule{})
+	// a := fileadapter.NewAdapter(config.BasePath + config.Config("CONFIG_PATH_CASBIN_POLICY"))
+	// authz := casbin.New(casbin.Config{
+	// 	ModelFilePath: config.BasePath + config.Config("CONFIG_PATH_CASBIN_MODEL"),
+	// 	PolicyAdapter: a,
+	// 	Lookup: func(c *fiber.Ctx) string {
+	// 		user, ok := c.Locals("user").(*models.UserData)
+	// 		if !ok {
+	// 			return ""
+	// 		}
+	// 		sub := strconv.Itoa(int(user.StatusAccount))
 
-			return sub
-		},
-		Unauthorized: func(c *fiber.Ctx) error {
-			return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have access"))
-		},
-	})
+	// 		return sub
+	// 	},
+	// 	Unauthorized: func(c *fiber.Ctx) error {
+	// 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have authorization"))
+	// 	},
+	// 	Forbidden: func(c *fiber.Ctx) error {
+	// 		// user, _ := c.Locals("user").(*models.UserData)
+	// 		// fmt.Printf("[DEBUG] FORBIDDEN: sub=%v, obj=%v, act=%v\n",
+	// 		// 	user.StatusAccount,
+	// 		// 	c.Path(),
+	// 		// 	c.Method(),
+	// 		// )
+	// 		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("your role don't have access"))
+	// 	},
+	// })
 
 	sort.Slice(handlers.MapMicroService.Services, func(i, j int) bool {
 		return len(handlers.MapMicroService.Services[i].Path) > len(handlers.MapMicroService.Services[j].Path)
@@ -104,7 +125,8 @@ func RegisterRoutes(app *fiber.App) {
 			middlewares = append(middlewares, middleware.ValidateSession)
 		}
 		if service.RbacProtection {
-			middlewares = append(middlewares, authz.RoutePermission())
+			middlewares = append(middlewares, middleware.Auth)
+			middlewares = append(middlewares, middleware.AuthRBAC)
 		}
 
 		// Build args properly
@@ -139,7 +161,6 @@ func proxyHandler(service types.Service) fiber.Handler {
 
 		userField := zap.Skip()
 		if user, ok := c.Locals("user").(*models.UserData); ok {
-			fmt.Println(user)
 			userField = zap.String("user", user.Username)
 		}
 

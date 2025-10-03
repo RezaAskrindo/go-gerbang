@@ -36,6 +36,20 @@ func AuthRoutes(app *fiber.App) {
 	// authSession := auth.Group("/v1/auth") //.Use(middleware.Auth)
 	// authSession.Get("/auth-key/:token", services.AuthByJWT)
 
+	roleApi := app.Group("/auth/role")
+	roleApi.Get("/all", services.GetAllAuthRole)
+	roleApi.Post("/", services.CreateAuthRole)
+	roleApi.Put("/:id", services.UpdateAuthRole)
+	roleApi.Delete("/:id", services.DeleteAuthRule)
+
+	userAssignment := app.Group("/auth/user-assignment")
+	userAssignment.Get("/all", services.GetAllUserAssignments)
+	userAssignment.Post("/", services.CreateUserAssignment)
+	userAssignment.Post("/bulk", services.CreateUserAssignmentsBulk)
+	userAssignment.Put("/", services.UpdateUserAssignment)
+	userAssignment.Put("/bulk", services.UpdateUserAssignmentsBulk)
+	userAssignment.Delete("/:account_id/:auth_role_id", services.DeleteUserAssignment)
+
 	usersApi := app.Group("/users")
 	usersApi.Get("/all", services.GetAllUser)
 	usersApi.Get("/:userId", services.FindUserById)

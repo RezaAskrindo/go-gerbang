@@ -1,25 +1,34 @@
 {
   "services": [
     {
-      "path": "/api/skor/events/active",
-      "url": "http://localhost:8090/events/active",
-      "auth_protection": false,
-      "csrf_protection": false,
-      "rbac_protection": false
-    },
-    {
-      "path": "/api/skor/dms",
-      "url": "http://localhost:8090/dms",
-      "auth_protection": false,
-      "csrf_protection": false,
-      "rbac_protection": false
-    },
-    {
-      "path": "/api/skor",
-      "url": "http://localhost:8090",
+      "service": "GRC",
+      "path": "/api/grc/risk-report/",
+      "url": "http://localhost:8060/",
       "auth_protection": true,
+      "session_protection": false,
       "csrf_protection": false,
-      "rbac_protection": false
+      "rbac_protection": true,
+      "status": true
+    },
+    {
+      "service": "GRC",
+      "path": "/api/grc/master/v1/users",
+      "url": "http://localhost:8070/v1/users",
+      "auth_protection": false,
+      "session_protection": false,
+      "csrf_protection": false,
+      "rbac_protection": false,
+      "status": true
+    },
+    {
+      "service": "GRC",
+      "path": "/api/grc/master/",
+      "url": "http://localhost:8070/",
+      "auth_protection": true,
+      "session_protection": false,
+      "csrf_protection": false,
+      "rbac_protection": true,
+      "status": true
     }
   ]
 }

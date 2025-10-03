@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type FC } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import useSWR, { type SWRConfiguration } from "swr";
+import useSWRMutation from "swr/mutation";
 import Highcharts from 'highcharts';
 
 Highcharts.setOptions({
@@ -121,7 +122,8 @@ function formatBytes(bytes: number, decimals = 1): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function limitData(data: Highcharts.SeriesOptionsType["data"]): Highcharts.SeriesOptionsType["data"] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function limitData(data: any): any {
   if (Array.isArray(data) && data.length > MAX_POINTS) {
     return data.slice(data.length - MAX_POINTS);
   }
@@ -197,9 +199,9 @@ const MetricsInfo = () => {
         </CardHeader>
         <CardFooter className="px-0">
           <Chart>
-            <Area.Series data={ramSeries[0].data} name={ramSeries[0].name} />
-            <Area.Series data={ramSeries[1].data} name={ramSeries[1].name} />
-            <Area.Series data={ramSeries[2].data} name={ramSeries[2].name} />
+            <Area.Series data={ramSeries[0].data} />
+            <Area.Series data={ramSeries[1].data} />
+            <Area.Series data={ramSeries[2].data} />
           </Chart>
         </CardFooter>
       </Card>
@@ -212,7 +214,7 @@ const MetricsInfo = () => {
         </CardHeader>
         <CardFooter className="px-0">
           <Chart>
-            <Area.Series data={cpuSeries} name="CPU Usage" />
+            <Area.Series data={cpuSeries} />
           </Chart>
         </CardFooter>
       </Card>
@@ -225,7 +227,7 @@ const MetricsInfo = () => {
         </CardHeader>
         <CardFooter className="px-0">
           <Chart>
-            <Area.Series data={rtimeSeries} name="Response Time" />
+            <Area.Series data={rtimeSeries} />
           </Chart>
         </CardFooter>
       </Card>
@@ -238,7 +240,7 @@ const MetricsInfo = () => {
         </CardHeader>
         <CardFooter className="px-0">
           <Chart>
-            <Area.Series data={connsSeries} name="Connections" />
+            <Area.Series data={connsSeries} />
           </Chart>
         </CardFooter>
       </Card>
@@ -522,10 +524,9 @@ type TLogProxy = {
   request_count: number
   service: string
   status: number
-}
+} 
 
 type TLogProxyDetail = {
-  id: number
   level: string
   service: string
   method: string
@@ -539,11 +540,13 @@ type TLogProxyDetail = {
 }
 
 type DetailLogProxyProps = {
-  row: TLogProxy;
+  row: TLogProxy
+  dateBegin?: Date
+  dateEnd?: Date
 }
 
-const DetailLogProxy: FC<DetailLogProxyProps> = ({ row }) => {
-  const { isLoading, data: logProxyDataDetail, error } = useSWR(`${BackendUrlBase}/log-stats-proxy?detail=true&service=${row.service}&method=${row.method}&path=${row.path}&status=${row.status}`, fetchSWR);
+const DetailLogProxy: FC<DetailLogProxyProps> = ({ row, dateBegin, dateEnd }) => {
+  const { isLoading, data: logProxyDataDetail, error } = useSWR(dateBegin && dateEnd ? `${BackendUrlBase}/log-stats-proxy?detail=true&service=${row.service}&method=${row.method}&path=${row.path}&status=${row.status}&from=${dateBegin.toISOString()}&to=${dateEnd.toISOString()}` : `${BackendUrlBase}/log-stats-proxy`, fetchSWR);
 
   const columnsDetail: ColumnDef<TLogProxyDetail>[] = [
     {
@@ -646,7 +649,7 @@ const DetailLogProxy: FC<DetailLogProxyProps> = ({ row }) => {
 
   return (
     <div>
-      <DataTable columns={columnsDetail} data={logProxyDataDetail?.data ?? []} />
+      <DataTable rowIdKey="timestamp" columns={columnsDetail} data={logProxyDataDetail?.data ?? []} />
     </div>
   )
 }
@@ -715,11 +718,11 @@ const LogProxyData = () => {
     setDateEnd(newDate);
   };
 
-  const { isLoading, data: logProxyData } = useSWR(dateBegin && dateEnd ? `${BackendUrlBase}/log-stats-proxy?from=${dateBegin.toISOString()}&to=${dateEnd.toISOString()}` : `${BackendUrlBase}/log-stats-proxy`, fetchSWR);
+  const { trigger, data: logProxyData, isMutating } = useSWRMutation(dateBegin && dateEnd ? `${BackendUrlBase}/log-stats-proxy?from=${dateBegin.toISOString()}&to=${dateEnd.toISOString()}` : `${BackendUrlBase}/log-stats-proxy`, fetchSWR);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex flex-row gap-2">
           <Label htmlFor="time-from">Date Start</Label>
           <Popover open={openBegin} onOpenChange={setOpenBegin}>
@@ -810,12 +813,12 @@ const LogProxyData = () => {
             </PopoverContent>
           </Popover>
         </div>
-        {dateBegin && dateEnd && <Button type="button" variant="outline" onClick={() => {setDateBegin(undefined);setDateEnd(undefined)}}>
+        <Button type="button" variant="outline" onClick={() => trigger()}>
           <RefreshCcw />
-          Clear
-        </Button>}
+          Reload
+        </Button>
       </div>
-      {isLoading ? <TableSkeleton /> : <DataTable columns={columns} data={logProxyData?.data ?? []} canExpand={true} DetailRow={DetailLogProxy} /> }
+      {isMutating ? <TableSkeleton /> : <DataTable rowIdKey="path" columns={columns} data={logProxyData?.data ?? []} canExpand={true} DetailRow={DetailLogProxy} detailRowProps={{ dateBegin, dateEnd }} />}
     </div>
   )
 }

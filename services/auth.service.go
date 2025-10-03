@@ -28,7 +28,8 @@ func Signup(c *fiber.Ctx) error {
 	}
 
 	if err := handlers.ValidateStruct(*user); err != nil {
-		return c.Status(fiber.StatusOK).JSON(err)
+		// return c.Status(fiber.StatusOK).JSON(err)
+		return handlers.SuccessResponse(c, false, "error validation user", err, nil)
 	}
 
 	userExist := new(models.User)
@@ -214,7 +215,6 @@ func Login(c *fiber.Ctx) error {
 		}
 	}
 
-	// refreshToken, err := handlers.GenerateRefreshToken(user_data)
 	refreshToken, err := handlers.GenerateTokenJWT(user_data, true)
 	if err != nil {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to generate new refresh token"))
