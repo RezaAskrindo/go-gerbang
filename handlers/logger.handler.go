@@ -164,9 +164,9 @@ func StartLogWorker(ctx context.Context, queue <-chan logEntry) {
 }
 
 func InitLogger(ctx context.Context) error {
-	if err := database.GDB.AutoMigrate(&models.LogProxy{}); err != nil {
-		return err
-	}
+	// if err := database.GDB.AutoMigrate(&models.LogProxy{}); err != nil {
+	// 	return err
+	// }
 
 	logQueue := make(chan logEntry, 1000)
 	go StartLogWorker(ctx, logQueue)

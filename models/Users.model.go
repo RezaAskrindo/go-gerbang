@@ -146,7 +146,7 @@ func FindUserByIdentity(dest interface{}, username interface{}, email interface{
 }
 
 func FindUser(dest interface{}, conds ...interface{}) *gorm.DB {
-	return database.GDB.Model(&User{}).Select("id_account", "identity_number", "username", "full_name", "email", "phone_number", "date_of_birth", "status_account", "login_ip", "login_attempts", "login_time", "created_at", "updated_at").Find(dest, conds...)
+	return database.GDB.Model(&User{}).Select("id_account", "identity_number", "username", "full_name", "email", "phone_number", "date_of_birth", "status_account", "login_ip", "login_attempts", "login_time", "created_at", "updated_at").Order("created_at").Find(dest, conds...)
 }
 
 func FindAllUser(dest interface{}) *gorm.DB {

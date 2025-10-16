@@ -1,6 +1,7 @@
-import { useEffect, useState, type FC } from 'react';
+import { startTransition, useEffect, useState, type FC } from 'react';
 import useSWR, { type KeyedMutator } from 'swr'
 import { Ban, Ellipsis, EyeIcon, EyeOff, Plus, Save } from 'lucide-react';
+import { fromUnixTime } from "date-fns";
 
 import { type ColumnDef } from "@tanstack/react-table";
 
@@ -145,16 +146,17 @@ const UserForm = ({value, setOpen, mutate}: FormProps<Account>) => {
   }
 
   useEffect(() => {
-    setForm({
-      idAccount: value?.idAccount || "",
-      identityNumber: value?.identityNumber || "",
-      username: value?.username || "",
-      fullName: value?.fullName || "",
-      email: value?.email || "",
-      phoneNumber: value?.phoneNumber || "",
-      statusAccount: value?.statusAccount || 0,
+    startTransition(() => {
+      setForm({
+        idAccount: value?.idAccount || "",
+        identityNumber: value?.identityNumber || "",
+        username: value?.username || "",
+        fullName: value?.fullName || "",
+        email: value?.email || "",
+        phoneNumber: value?.phoneNumber || "",
+        statusAccount: value?.statusAccount || 0,
+      });
     });
-
   }, [value])
 
   return (
@@ -263,13 +265,6 @@ const UserPasswordForm = ({value, setOpen, mutate}: FormProps<Account>) => {
     setLoading(false);
   }
 
-  useEffect(() => {
-    setForm({
-      id: value?.idAccount || "",
-      password: ""
-    });
-  }, [value])
-
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid gap-4">
@@ -343,10 +338,6 @@ export default function UserManagement() {
 
   const columns: ColumnDef<Account>[] = [
     {
-      accessorKey: "identityNumber",
-      header: "ID Number",
-    },
-    {
       accessorKey: "username",
       header: "Username",
     },
@@ -363,14 +354,22 @@ export default function UserManagement() {
       header: "Phone Number",
     },
     {
+      accessorKey: "identityNumber",
+      header: "ID Number",
+    },
+    {
       accessorKey: "loginTime",
       header: "Login Time",
-      cell: ({ row }) => row.original.loginTime && new Date(row.original.loginTime).toLocaleTimeString()
+      cell: ({ row }) => row.original.loginTime && fromUnixTime(row.original.loginTime).toLocaleDateString('id-ID', { year: 'numeric', month: "2-digit", day: 'numeric', hour: '2-digit', minute: '2-digit' })
     },
     {
       accessorKey: "statusAccount",
       header: "Status",
       cell: ({ row }) => row.original.statusAccount === 10 ? "Aktif" : "Non Aktif"
+    },
+    {
+      accessorKey: "loginIp",
+      header: "Last Login IP",
     },
     {
       id: "actions",
@@ -379,7 +378,7 @@ export default function UserManagement() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+              className="data-[state=open]:bg-muted text-muted-foreground flex size-6"
               size="icon"
             >
               <Ellipsis />

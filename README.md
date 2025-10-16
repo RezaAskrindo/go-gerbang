@@ -33,6 +33,12 @@ Untuk penggunaan ENV silahkan cek email atau WA
 ## Deploy For LINUX
 env GOOS=linux GOARCH=amd64 go build -o apigateway-9000
 
+OR
+
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o apigateway-9000
+
+If env not work
+
 ## Running in background in LINUX
 ./golangapp/apigateway-9000 & disown
 

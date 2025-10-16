@@ -12,7 +12,13 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, GripVertical } from 'lucide-react'
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  ChevronsLeft, 
+  ChevronsRight, 
+  GripVertical 
+} from 'lucide-react'
 
 import {
   closestCenter,

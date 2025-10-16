@@ -140,24 +140,6 @@ func AuthByJWT(c *fiber.Ctx) error {
 
 func GetSessionJWT(c *fiber.Ctx) error {
 	data := new(models.UserData)
-	// data = &models.UserData{
-	// 	IdAccount:       c.Locals("id_account").(string),
-	// 	IdentityNumber:  c.Locals("identity_number").(string),
-	// 	Username:        c.Locals("username").(string),
-	// 	FullName:        c.Locals("full_name").(string),
-	// 	Email:           c.Locals("email").(string),
-	// 	PhoneNumber:     c.Locals("phone_number").(string),
-	// 	DateOfBirth:     c.Locals("date_of_birth").(*time.Time),
-	// 	AuthKey:         c.Locals("auth_key").(string),
-	// 	UsedPin:         c.Locals("used_pin").(int8),
-	// 	IsGoogleAccount: c.Locals("is_google_account").(int8),
-	// 	StatusAccount:   c.Locals("status_account").(int8),
-	// 	LoginIp:         c.Locals("login_ip").(string),
-	// 	LoginAttempts:   c.Locals("login_attempts").(int8),
-	// 	LoginTime:       c.Locals("login_time").(int64),
-	// 	CreatedAt:       c.Locals("created_at").(int),
-	// 	UpdatedAt:       c.Locals("updated_at").(int),
-	// }
 	userData, ok := c.Locals("user").(*models.UserData)
 	if ok {
 		data = userData

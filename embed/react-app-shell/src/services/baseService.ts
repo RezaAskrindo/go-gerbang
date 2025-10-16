@@ -1,13 +1,19 @@
 import useSWR, { type SWRConfiguration } from "swr";
 
-// const env = import.meta.env;
-// export const BackendUrlBase = env.DEV ? "http://localhost:9000" : "/backend";
-export const BackendUrlBase = "http://localhost:9000";
+const env = import.meta.env;
+export const BackendUrlBase = env.DEV ? "http://localhost:9000" : "/backend";
+export const FrontendUrl = env.DEV ? "http://localhost:5173" : window.location.origin;
+// export const BackendUrlBase = "http://localhost:9000";
+// export const FrontendUrl = "http://localhost:5173";
 
 export const fetchSWR = (url: string) => fetch(url, {credentials: "include"}).then(r => r.json())
 
 export const SWRBasedConfig: SWRConfiguration = {
   revalidateOnFocus: false
+}
+
+export const SWRDashboardConfig: SWRConfiguration = {
+  refreshInterval: 5000
 }
 
 export async function FetchCsrfToken(): Promise<string> {

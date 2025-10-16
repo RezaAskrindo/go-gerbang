@@ -31,6 +31,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -199,12 +205,57 @@ const PolicyList = () => {
 export default function MenuManagement() {
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <div>
-        <AuthRoleList />
+    <div className="flex-1 flex-col gap-8 md:flex">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            RBAC Management
+          </h2>
+          <p className="text-muted-foreground">
+            Here&apos;s Role Base Access Control list.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline">
+            <Plus />
+            AUTH ROLE
+          </Button>
+          <Button variant="outline">
+            <Plus />
+            AUTH ROLE
+          </Button>
+        </div>
       </div>
-      <div className="col-span-2">
-        <PolicyList />
+      <Tabs
+        defaultValue="outline"
+        className="w-full flex-col justify-start gap-6"
+      >
+        <div className="flex items-center justify-between">
+          <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
+            <TabsTrigger value="outline">Outline</TabsTrigger>
+            <TabsTrigger value="past-performance">
+              Past Performance
+            </TabsTrigger>
+            <TabsTrigger value="key-personnel">
+              Key Personnel
+            </TabsTrigger>
+            <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent
+          value="outline"
+          className="relative flex flex-col gap-4 overflow-auto"
+        >
+          
+        </TabsContent>
+      </Tabs>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <AuthRoleList />
+        </div>
+        <div className="col-span-2">
+          <PolicyList />
+        </div>
       </div>
     </div>
   )

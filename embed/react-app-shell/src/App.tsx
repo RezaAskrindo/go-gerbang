@@ -6,8 +6,7 @@ import {
   type ReactNode 
 } from "react";
 
-import { 
-  Bell, 
+import {
   BookOpen, 
   ChevronRight, 
   ChevronsUpDown, 
@@ -29,7 +28,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,20 +53,19 @@ import Placeholder from "@/assets/placeholder.svg";
 import LogoReact from "@/assets/react.svg";
 
 import NotFound from "./components/go-gerbang/not-found";
-import UserManagement from "./components/go-gerbang/user-management";
-import MenuManagement from "./components/go-gerbang/menu-management";
-import Dashboard from "./components/go-gerbang/dashboard";
-import ResetPasswordForm from "./components/go-gerbang/reset-password-form";
+// import ResetPasswordForm from "./components/go-gerbang/reset-password-form";
 
 import { 
   BackendUrlBase,
   FetchCsrfToken,
+  FrontendUrl,
   GetAuthSession,
 } from "./services/baseService";
 
 const AppShell = lazy(() => import("@/components/app-shell"));
-
-const FrontendUrl = "http://localhost:5173";
+const Dashboard = lazy(() => import("./components/go-gerbang/dashboard"));
+const UserManagement = lazy(() => import("./components/go-gerbang/user-management"));
+const RbacManagement = lazy(() => import("./components/go-gerbang/rbac-management"));
 
 const TeamSwitcher = () => {
   return (
@@ -182,13 +179,13 @@ const NavUser = () => {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            {/* <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Bell />
                 Notifications
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => window.location.href = `${BackendUrlBase}/api/v1/auth/logout?redirectUrl=${FrontendUrl}`}>
               <LogOut />
@@ -210,7 +207,7 @@ function useAuth() {
 const routes: Record<string, React.ComponentType> = {
   "/": Dashboard,
   "/user": UserManagement,
-  "/rbac": MenuManagement,
+  "/rbac": RbacManagement,
 };
 
 function AppRouter(): ReactNode {
@@ -286,13 +283,13 @@ function App() {
     </p>
   </div>
 
-  const footerLogin = () => <>
-    <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-      <span className="bg-background text-muted-foreground relative z-10 px-2">
-        or continue with
-      </span>
-    </div>
-  </>
+  // const footerLogin = () => <>
+  //   <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+  //     <span className="bg-background text-muted-foreground relative z-10 px-2">
+  //       or continue with
+  //     </span>
+  //   </div>
+  // </>
 
   const { auth, isLoading } = useAuth();
 
@@ -309,10 +306,10 @@ function App() {
       ImageBanner={Placeholder}
       loginSend={loginSend}
       HeaderLogin={headerName}
-      FooterLogin={footerLogin}
-      ResetPasswordForm={ResetPasswordForm}
+      // FooterLogin={footerLogin}
+      // ResetPasswordForm={ResetPasswordForm}
     />
-    <Toaster />
+    <Toaster closeButton />
   </ThemeProvider>
 }
 
