@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { toast } from "sonner"
 
 const formSchema = z.object({
   identity: z.string().min(2, {
@@ -26,14 +27,18 @@ const formSchema = z.object({
 })
 
 type LoginFormProps = React.ComponentProps<"form"> & {
-  loginSend?: (valuez:{ identity: string; password: string }) => void
+  // loginSend?: (valuez:{ identity: string; password: string }) => void
+  BackendUrlBase: string
+  FrontendUrl: string
   HeaderLogin?: JSX.Element
   FooterLogin?: ComponentType
   ResetPasswordForm?: ComponentType
 }
 
-export function LoginForm({
-  loginSend,
+export default function LoginForm({
+  // loginSend,
+  BackendUrlBase,
+  FrontendUrl,
   HeaderLogin,
   FooterLogin,
   ResetPasswordForm,
@@ -51,16 +56,69 @@ export function LoginForm({
     },
   })
 
+
+  async function FetchCsrfToken(): Promise<string> {
+    const urlCsrf = `${BackendUrlBase}/secure-gateway-c`;
+    const res = await fetch(urlCsrf, { credentials: 'include' });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data?.data;
+  }
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!loginSend) return true;
+    // if (!loginSend) return true;
     
     setLoadingButton(true);
 
-    loginSend?.(values);
+    const doLogin = async () => {
+      const getCsrf = await FetchCsrfToken();
+      const url = `${BackendUrlBase}/api/v1/auth/login?httponly=true&session=true&domain=localhost&url=${FrontendUrl}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: { 
+          "Content-Type": "application/json", 
+          "X-SGCsrf-Token": getCsrf 
+        },
+        body: JSON.stringify(values),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+      if (!data.status) {
+        throw new Error(data.message || "Failed to login");
+      }
+
+      return data;
+    };
+
+    toast.promise(
+      doLogin().catch(async (err) => {
+        if (err.message === "CSRF validation failed") {
+          const retryData = await doLogin();
+          return retryData;
+        }
+        throw err;
+      }),
+      {
+        loading: "Waiting...",
+        success: () => {
+          window.location.href = FrontendUrl;
+          return "Success"
+        },
+        error: (err) => {
+          return err.message || "Failed"
+        },
+      }
+    )
 
     setTimeout(() => {
       setLoadingButton(false);
-    }, 3000)
+    }, 2000)
   }
 
   return (

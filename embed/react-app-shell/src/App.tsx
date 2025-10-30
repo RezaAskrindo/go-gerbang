@@ -293,19 +293,31 @@ function App() {
 
   const { auth, isLoading } = useAuth();
 
+  const loadingIndicator = <div className="fixed inset-0 flex items-center justify-center">
+      <div className="relative w-10 h-10 border-2 border-black/70 border-b-transparent rounded-full animate-spin"></div>
+  </div>
+
+  if (isLoading) {
+    return loadingIndicator
+  }
+
+  if (!auth) {
+    return <h1>NEED LOGIN</h1>
+  }
+
   return <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
     <AppShell 
-      AuthChecking={isLoading}
-      AuthPassed={auth}
       TeamSwitcher={TeamSwitcher}
       NavMain={NavMain}
       NavUser={NavUser}
       PageContent={AppRouter}
-      ImageLogo={LogoReact}
-      ImageLogoWhite={LogoReact}
-      ImageBanner={Placeholder}
-      loginSend={loginSend}
-      HeaderLogin={headerName}
+      // AuthChecking={isLoading}
+      // AuthPassed={auth}
+      // ImageLogo={LogoReact}
+      // ImageLogoWhite={LogoReact}
+      // ImageBanner={Placeholder}
+      // loginSend={loginSend}
+      // HeaderLogin={headerName}
       // FooterLogin={footerLogin}
       // ResetPasswordForm={ResetPasswordForm}
     />

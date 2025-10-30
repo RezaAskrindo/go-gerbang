@@ -27,6 +27,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    port: 3000
+  },
   // base: 'http://localhost:2001',
   preview: {
     port: 2001,

@@ -1,26 +1,26 @@
-import { type ComponentType, type JSX } from "react";
+// import { type ComponentType, type JSX } from "react";
 
 import { useTheme } from "@/components/useTheme";
-import { LoginForm } from "./LoginForm";
+// import LoginForm from "./LoginForm";
 
 interface LoginProps {
   ImageLogo?: string
   ImageLogoWhite?: string
   ImageBanner?: string
-  loginSend?: (valuez:{ identity: string; password: string }) => void
-  HeaderLogin?: JSX.Element
-  FooterLogin?: ComponentType
-  ResetPasswordForm?: ComponentType
+  // loginSend: (valuez:{ identity: string; password: string }) => void
+  // HeaderLogin?: JSX.Element
+  // FooterLogin?: ComponentType
+  // ResetPasswordForm?: ComponentType
 }
 
 export default function LoginView({
   ImageLogo,
   ImageLogoWhite,
   ImageBanner,
-  loginSend,
-  HeaderLogin,
-  FooterLogin,
-  ResetPasswordForm,
+  // loginSend,
+  // HeaderLogin,
+  // FooterLogin,
+  // ResetPasswordForm,
 }: LoginProps) {
   const { theme } = useTheme();
 
@@ -36,12 +36,12 @@ export default function LoginView({
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
-            <LoginForm 
+            {/* <LoginForm 
               loginSend={loginSend} 
               HeaderLogin={HeaderLogin} 
               FooterLogin={FooterLogin} 
               ResetPasswordForm={ResetPasswordForm} 
-            />
+            /> */}
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import useSWR, { type SWRConfiguration } from "swr";
 
 const env = import.meta.env;
-export const BackendUrlBase = env.DEV ? "http://localhost:9000" : "/backend";
+// export const BackendUrlBase = env.DEV ? "http://localhost:9000" : "/backend";
+export const BackendUrlBase = "http://localhost:9000";
 export const FrontendUrl = env.DEV ? "http://localhost:5173" : window.location.origin;
 // export const BackendUrlBase = "http://localhost:9000";
 // export const FrontendUrl = "http://localhost:5173";

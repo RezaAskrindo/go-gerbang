@@ -1,10 +1,10 @@
 
 import { 
-  lazy,
+  // lazy,
   Suspense, 
   useCallback, 
   type ComponentType, 
-  type JSX, 
+  // type JSX, 
   type ReactNode 
 } from "react"
 import { Moon, Sun } from "lucide-react"
@@ -22,7 +22,7 @@ import { useTheme } from "@/components/useTheme";
 
 import { AppSidebar } from "./app-sidebar"
 
-const LoginView = lazy(() => import("./auth/LoginView"));
+// const LoginView = lazy(() => import("./auth/LoginView"));
 
 type AppShellProps = {
   Breadcrumb?: ComponentType
@@ -31,15 +31,15 @@ type AppShellProps = {
   CardInformation?: ComponentType
   NavUser?: ComponentType
   PageContent?: () => ReactNode
-  AuthChecking?: boolean
-  AuthPassed?: boolean
-  ImageLogo?: string
-  ImageLogoWhite?: string
-  ImageBanner?: string
-  loginSend?: (valuez:{ identity: string; password: string }) => void
-  HeaderLogin?: JSX.Element
-  FooterLogin?: ComponentType
-  ResetPasswordForm?: ComponentType
+  // AuthChecking?: boolean
+  // AuthPassed?: boolean
+  // ImageLogo?: string
+  // ImageLogoWhite?: string
+  // ImageBanner?: string
+  // loginSend?: (valuez:{ identity: string; password: string }) => void
+  // HeaderLogin?: JSX.Element
+  // FooterLogin?: ComponentType
+  // ResetPasswordForm?: ComponentType
 }
 
 export default function AppShell({
@@ -49,15 +49,15 @@ export default function AppShell({
   CardInformation,
   NavUser,
   PageContent,
-  AuthChecking,
-  AuthPassed=false,
-  ImageLogo,
-  ImageLogoWhite,
-  ImageBanner,
-  loginSend,
-  HeaderLogin,
-  FooterLogin,
-  ResetPasswordForm,
+  // AuthChecking,
+  // AuthPassed=false,
+  // ImageLogo,
+  // ImageLogoWhite,
+  // ImageBanner,
+  // loginSend,
+  // HeaderLogin,
+  // FooterLogin,
+  // ResetPasswordForm,
 }: AppShellProps) {
   const { setTheme, theme } = useTheme();
   
@@ -65,27 +65,27 @@ export default function AppShell({
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
-  const loadingIndicator = <div className="fixed inset-0 flex items-center justify-center">
-    <div className="relative w-10 h-10 border-2 border-black/70 border-b-transparent rounded-full animate-spin"></div>
-  </div>
+  // const loadingIndicator = <div className="fixed inset-0 flex items-center justify-center">
+  //   <div className="relative w-10 h-10 border-2 border-black/70 border-b-transparent rounded-full animate-spin"></div>
+  // </div>
 
-  if (AuthChecking) {
-    return loadingIndicator;
-  }
+  // if (AuthChecking) {
+  //   return loadingIndicator;
+  // }
 
-  if (!AuthPassed) {
-    return <Suspense fallback={loadingIndicator}>
-      <LoginView 
-        ImageLogo={ImageLogo}
-        ImageLogoWhite={ImageLogoWhite}
-        ImageBanner={ImageBanner}
-        loginSend={loginSend}
-        HeaderLogin={HeaderLogin}
-        FooterLogin={FooterLogin}
-        ResetPasswordForm={ResetPasswordForm}
-      />
-    </Suspense>
-  }
+  // if (!AuthPassed) {
+  //   return <Suspense fallback={loadingIndicator}>
+  //     <LoginView 
+  //       ImageLogo={ImageLogo}
+  //       ImageLogoWhite={ImageLogoWhite}
+  //       ImageBanner={ImageBanner}
+  //       loginSend={loginSend}
+  //       HeaderLogin={HeaderLogin}
+  //       FooterLogin={FooterLogin}
+  //       ResetPasswordForm={ResetPasswordForm}
+  //     />
+  //   </Suspense>
+  // }
 
   return (
     <SidebarProvider>
