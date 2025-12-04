@@ -2,10 +2,14 @@ package services
 
 import (
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -214,4 +218,99 @@ func HandleConfigFile(c *fiber.Ctx) error {
 	}
 
 	return handlers.SuccessResponse(c, true, "success update config file", u, nil)
+}
+
+func HandleFileUpload(c *fiber.Ctx) error {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return err
+	}
+
+	rawLocation := form.Value["file-location"][0]
+	cleanPath := filepath.ToSlash(rawLocation)
+	targetFolder := filepath.Base(cleanPath)
+	uploadRoot := "./" + targetFolder
+	os.MkdirAll(uploadRoot, 0755)
+
+	entries, err := os.ReadDir(uploadRoot)
+	if err != nil {
+		return err
+	}
+
+	hasFiles := false
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// Skip backup folders
+		if strings.HasPrefix(name, "backup-") {
+			continue
+		}
+
+		hasFiles = true
+		break
+	}
+
+	if hasFiles {
+		timestamp := time.Now().Format("20060102-150405")
+		backupDir := uploadRoot + "/backup-" + timestamp
+
+		// Create backup folder
+		os.MkdirAll(backupDir, 0755)
+
+		// Copy all non-backup files/folders
+		for _, entry := range entries {
+			name := entry.Name()
+			if strings.HasPrefix(name, "backup-") {
+				continue
+			}
+
+			src := filepath.Join(uploadRoot, name)
+			dst := filepath.Join(backupDir, name)
+
+			// Copy file or folder recursively
+			if entry.IsDir() {
+				filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+
+					rel, _ := filepath.Rel(src, path)
+					target := filepath.Join(dst, rel)
+
+					if info.IsDir() {
+						os.MkdirAll(target, 0755)
+					} else {
+						os.MkdirAll(filepath.Dir(target), 0755)
+						in, _ := os.Open(path)
+						out, _ := os.Create(target)
+						io.Copy(out, in)
+						in.Close()
+						out.Close()
+					}
+					return nil
+				})
+			} else {
+				// Copy single file
+				in, _ := os.Open(src)
+				out, _ := os.Create(dst)
+				io.Copy(out, in)
+				in.Close()
+				out.Close()
+			}
+		}
+	}
+
+	files := form.File["files"]
+
+	for _, file := range files {
+		targetPath := filepath.ToSlash(uploadRoot + "/" + file.Filename)
+
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
+
+		if err := c.SaveFile(file, targetPath); err != nil {
+			return err
+		}
+	}
+
+	return handlers.SuccessResponse(c, true, "success upload file", nil, nil)
 }

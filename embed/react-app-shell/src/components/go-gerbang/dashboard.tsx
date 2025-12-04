@@ -52,6 +52,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -66,6 +77,7 @@ import {
 } from "@/services/baseService";
 
 import TableSkeleton from "./table-skeleton";
+import MetricsInfoSkeleton from "./metrics-info-skeleton";
 
 const CodeHighlighter = lazy(() => import("@/components/CodeHighlighter"));
 const MetricsInfo = lazy(() => import("./metrics-info"));
@@ -84,7 +96,35 @@ type InfoDataType = {
 const CircuitBreaker = () => {
   const { data: circuitData } = useSWR(`${BackendUrlBase}/metrics/circuit`, fetchSWR, SWRDashboardConfig);
 
+  const [open, setOpen] = useState(false);
+
   const lastUpdate = circuitData?.lastStateChange ? new Date(circuitData?.lastStateChange).toLocaleString() : null;
+
+  const handleRestart = async () => {
+    toast.promise(
+      fetch(`${BackendUrlBase}/restart`, {
+        method: "POST",
+        credentials: "include",
+      }).then(async (res) => {
+        if (!res.ok) throw new Error("Request failed")
+        const data = await res.json()
+        if (!data.status) throw new Error(data.message || "Failed to login")
+        return data
+      }),
+      {
+        loading: "Waiting...",
+        success: () => {
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+          return "Success"
+        },
+        error: (err) => {
+          return err.message || "Failed"
+        },
+      }
+    )
+  }
 
   return (
     <Card className="gap-3">
@@ -116,8 +156,28 @@ const CircuitBreaker = () => {
           <div className="font-bold">{circuitData?.rejectedRequests}</div>
         </div>
       </CardContent>
-      <CardFooter className="mx-auto mt-2">
+      <CardFooter className="flex flex-col gap-2">
         <div className="text-muted-foreground font-semibold">Last Update: {lastUpdate}</div>
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogTrigger asChild>
+            <Button className="w-full" variant="destructive">
+              <RefreshCcw />
+              Restart GATEWAY
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action will restart the gateway services. All services will stop temporarily and may cause downtime.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction>Cancel</AlertDialogAction>
+              <AlertDialogCancel onClick={handleRestart}>Agree</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardFooter>
     </Card>
   )
@@ -144,29 +204,6 @@ const ServicesInfo = () => {
     updatedData[index] = { ...updatedData[index], [field]: val };
     setListInfoData(updatedData);
   };
-
-  const handleRestart = async () => {
-    toast.promise(
-      fetch(`${BackendUrlBase}/restart`, {
-        method: "POST",
-        credentials: "include",
-      }).then(async (res) => {
-        if (!res.ok) throw new Error("Request failed")
-        const data = await res.json()
-        if (!data.status) throw new Error(data.message || "Failed to login")
-        return data
-      }),
-      {
-        loading: "Waiting...",
-        success: () => {
-          return "Success"
-        },
-        error: (err) => {
-          return err.message || "Failed"
-        },
-      }
-    )
-  }
 
   const handleUpdate = () => {
     // listInfoData.forEach(obj => {
@@ -323,7 +360,6 @@ const ServicesInfo = () => {
               status: false,
               url: "",
             }])}>Add</Button>
-            <Button variant="outline" onClick={handleRestart}>Restart</Button>
             <Button variant="outline" onClick={handleUpdate}>Save</Button>
           </div>
         )}
@@ -656,7 +692,7 @@ export default function Dashboard() {
   return (
     <div className="grid grid-cols-4 gap-4">
       <div className="col-span-4">
-        <Suspense fallback={<p>Loading...</p>}>
+        <Suspense fallback={<MetricsInfoSkeleton />}>
           <MetricsInfo />
         </Suspense>
       </div>

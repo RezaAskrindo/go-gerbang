@@ -17,6 +17,7 @@
     "@highcharts/react": "4.1.0",
     "@hookform/resolvers": "^5.2.2",
     "@originjs/vite-plugin-federation": "^1.4.1",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",

@@ -126,7 +126,7 @@ export default function MetricsInfo() {
             {formatBytes(metricsData?.pid?.ram)} <span className="border-s ps-1 text-sm font-semibold text-orange-400">{formatBytes(metricsData?.os?.ram)}</span> <span className="border-s ps-1 text-sm font-semibold text-red-500">{formatBytes(metricsData?.os?.total_ram)}</span>
           </CardTitle>
         </CardHeader>
-        <CardFooter className="px-0">
+        <CardFooter className="px-0 min-h-48">
           <Chart>
             <Area.Series data={ramSeries[0].data} />
             <Area.Series data={ramSeries[1].data} />

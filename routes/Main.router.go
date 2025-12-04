@@ -38,6 +38,7 @@ func MainRoutes(app *fiber.App) {
 	// SERVICE
 	app.Post("/restart", services.RestartHandler)
 	app.Post("/config-file", services.HandleConfigFile)
+	app.Post("/upload-file", services.HandleFileUpload)
 
 	app.Get("/log-stats-proxy", services.GetStatsLogProxy)
 	app.Get("/metrics", monitor.New(monitor.Config{APIOnly: true}))

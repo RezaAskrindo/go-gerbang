@@ -55,17 +55,19 @@ import LogoReact from "@/assets/react.svg";
 import NotFound from "./components/go-gerbang/not-found";
 // import ResetPasswordForm from "./components/go-gerbang/reset-password-form";
 
-import { 
-  BackendUrlBase,
-  FetchCsrfToken,
-  FrontendUrl,
+import {
   GetAuthSession,
+  LoginUser,
+  LogoutUser,
 } from "./services/baseService";
 
+import AppLogin from "@/components/app-login";
+
 const AppShell = lazy(() => import("@/components/app-shell"));
-const Dashboard = lazy(() => import("./components/go-gerbang/dashboard"));
-const UserManagement = lazy(() => import("./components/go-gerbang/user-management"));
-const RbacManagement = lazy(() => import("./components/go-gerbang/rbac-management"));
+const Dashboard = lazy(() => import("@/components/go-gerbang/dashboard"));
+const UserManagement = lazy(() => import("@/components/go-gerbang/user-management"));
+const RbacManagement = lazy(() => import("@/components/go-gerbang/rbac-management"));
+const ModuleuManagement = lazy(() => import("@/components/go-gerbang/module-management"));
 
 const TeamSwitcher = () => {
   return (
@@ -91,6 +93,7 @@ const NavMain = () => {
       isActive: true,
       items: [
         {title: "user", url: "#/user"},
+        {title: "module", url: "#/module"},
         {title: "rbac", url: "#/rbac"},
       ]
     }
@@ -187,7 +190,7 @@ const NavUser = () => {
               </DropdownMenuItem>
             </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => window.location.href = `${BackendUrlBase}/api/v1/auth/logout?redirectUrl=${FrontendUrl}`}>
+            <DropdownMenuItem onClick={LogoutUser}>
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -207,6 +210,7 @@ function useAuth() {
 const routes: Record<string, React.ComponentType> = {
   "/": Dashboard,
   "/user": UserManagement,
+  "/module": ModuleuManagement,
   "/rbac": RbacManagement,
 };
 
@@ -229,36 +233,11 @@ function AppRouter(): ReactNode {
 
 function App() {
   const loginSend = async (valuez:{ identity: string; password: string }) => {
-    const doLogin = async () => {
-      const getCsrf = await FetchCsrfToken();
-      const url = `${BackendUrlBase}/api/v1/auth/login?httponly=true&session=true&domain=localhost&url=${FrontendUrl}`;
-
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-SGCsrf-Token": getCsrf 
-        },
-        body: JSON.stringify(valuez),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Request failed");
-      }
-      if (!data.status) {
-        throw new Error(data.message || "Failed to login");
-      }
-
-      return data;
-    };
-
     toast.promise(
-      doLogin().catch(async (err) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      LoginUser(valuez).catch(async (err: any) => {
         if (err.message === "CSRF validation failed") {
-          const retryData = await doLogin();
+          const retryData = await LoginUser(valuez);
           return retryData;
         }
         throw err;
@@ -276,22 +255,14 @@ function App() {
     )
   }
 
-  const headerName = <div className="flex flex-col items-center gap-2 text-center">
+  const { auth, isLoading } = useAuth();
+
+  const headerName = () => <div className="flex flex-col items-center gap-2 text-center">
     <h1 className="bg-linear-to-r from-blue-900 to-orange-500 bg-clip-text text-4xl font-extrabold text-transparent">GO GERBANG</h1>
     <p className="text-muted-foreground text-sm text-balance">
       APPS Gateway Build by Muhammad Reza
     </p>
   </div>
-
-  // const footerLogin = () => <>
-  //   <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-  //     <span className="bg-background text-muted-foreground relative z-10 px-2">
-  //       or continue with
-  //     </span>
-  //   </div>
-  // </>
-
-  const { auth, isLoading } = useAuth();
 
   const loadingIndicator = <div className="fixed inset-0 flex items-center justify-center">
       <div className="relative w-10 h-10 border-2 border-black/70 border-b-transparent rounded-full animate-spin"></div>
@@ -302,7 +273,16 @@ function App() {
   }
 
   if (!auth) {
-    return <h1>NEED LOGIN</h1>
+    return <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <AppLogin 
+        ImageLogo={LogoReact}
+        ImageLogoWhite={LogoReact}
+        ImageBanner={Placeholder}
+        loginSend={loginSend}
+        HeaderLogin={headerName}
+      />
+      <Toaster closeButton />
+    </ThemeProvider>
   }
 
   return <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
@@ -311,15 +291,7 @@ function App() {
       NavMain={NavMain}
       NavUser={NavUser}
       PageContent={AppRouter}
-      // AuthChecking={isLoading}
-      // AuthPassed={auth}
-      // ImageLogo={LogoReact}
-      // ImageLogoWhite={LogoReact}
-      // ImageBanner={Placeholder}
-      // loginSend={loginSend}
-      // HeaderLogin={headerName}
-      // FooterLogin={footerLogin}
-      // ResetPasswordForm={ResetPasswordForm}
+      variant="inset"
     />
     <Toaster closeButton />
   </ThemeProvider>

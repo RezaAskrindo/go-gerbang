@@ -16,6 +16,7 @@ export default defineConfig({
       exposes: {
         './AppShell': './src/components/app-shell.tsx',
         './Sidebar': './src/components/ui/sidebar.tsx',
+        './AppLogin': './src/components/app-login.tsx',
         './UseHelper': './src/components/ui/useHelper.tsx',
         './ThemeProvider': './src/components/theme-provider.tsx',
       },

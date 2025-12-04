@@ -1,16 +1,16 @@
 
 import { 
-  // lazy,
   Suspense, 
   useCallback, 
   type ComponentType, 
-  // type JSX, 
+  type ComponentProps, 
   type ReactNode 
 } from "react"
 import { Moon, Sun } from "lucide-react"
 
 import { Separator } from "@/components/ui/separator"
 import {
+  Sidebar,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
@@ -22,24 +22,13 @@ import { useTheme } from "@/components/useTheme";
 
 import { AppSidebar } from "./app-sidebar"
 
-// const LoginView = lazy(() => import("./auth/LoginView"));
-
-type AppShellProps = {
+type AppShellProps = ComponentProps<typeof Sidebar> & {
   Breadcrumb?: ComponentType
   TeamSwitcher?: ComponentType
   NavMain?: ComponentType
   CardInformation?: ComponentType
   NavUser?: ComponentType
   PageContent?: () => ReactNode
-  // AuthChecking?: boolean
-  // AuthPassed?: boolean
-  // ImageLogo?: string
-  // ImageLogoWhite?: string
-  // ImageBanner?: string
-  // loginSend?: (valuez:{ identity: string; password: string }) => void
-  // HeaderLogin?: JSX.Element
-  // FooterLogin?: ComponentType
-  // ResetPasswordForm?: ComponentType
 }
 
 export default function AppShell({
@@ -49,43 +38,13 @@ export default function AppShell({
   CardInformation,
   NavUser,
   PageContent,
-  // AuthChecking,
-  // AuthPassed=false,
-  // ImageLogo,
-  // ImageLogoWhite,
-  // ImageBanner,
-  // loginSend,
-  // HeaderLogin,
-  // FooterLogin,
-  // ResetPasswordForm,
+  ...props
 }: AppShellProps) {
   const { setTheme, theme } = useTheme();
   
   const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
-
-  // const loadingIndicator = <div className="fixed inset-0 flex items-center justify-center">
-  //   <div className="relative w-10 h-10 border-2 border-black/70 border-b-transparent rounded-full animate-spin"></div>
-  // </div>
-
-  // if (AuthChecking) {
-  //   return loadingIndicator;
-  // }
-
-  // if (!AuthPassed) {
-  //   return <Suspense fallback={loadingIndicator}>
-  //     <LoginView 
-  //       ImageLogo={ImageLogo}
-  //       ImageLogoWhite={ImageLogoWhite}
-  //       ImageBanner={ImageBanner}
-  //       loginSend={loginSend}
-  //       HeaderLogin={HeaderLogin}
-  //       FooterLogin={FooterLogin}
-  //       ResetPasswordForm={ResetPasswordForm}
-  //     />
-  //   </Suspense>
-  // }
 
   return (
     <SidebarProvider>
@@ -94,6 +53,7 @@ export default function AppShell({
         NavMain={NavMain}
         CardInformation={CardInformation}
         NavUser={NavUser}
+        {...props}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b">
@@ -122,8 +82,12 @@ export default function AppShell({
             </Button>
           </div>
         </header>
-        <div className="flex-1 p-4">
-          {PageContent && <PageContent />}
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="p-4">
+              {PageContent && <PageContent />}
+            </div>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

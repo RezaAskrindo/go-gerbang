@@ -213,7 +213,7 @@ export default function DataTable<TData, TValue>({
           />}
         </div>
       </div>
-      <div className="relative flex flex-col gap-4 overflow-auto">
+      <div className="w-full flex flex-col gap-4 overflow-auto">
         <div className="overflow-hidden rounded-lg border">
           <DndContext
             collisionDetection={closestCenter}
