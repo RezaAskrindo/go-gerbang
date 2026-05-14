@@ -24,7 +24,7 @@ func UpsertConfig(c fiber.Ctx) error {
 	return handlers.SuccessResponse(c, true, "success to insert config", body, nil)
 }
 
-// CONFIGURATIONS
+// Configuration
 func GetConfigurationByGroup(c fiber.Ctx) error {
 	group := c.Params("group")
 
@@ -32,24 +32,24 @@ func GetConfigurationByGroup(c fiber.Ctx) error {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need group params"))
 	}
 
-	d := &[]models.Configurations{}
+	d := &[]models.Configuration{}
 
 	config_name := c.Query("config_name")
 
 	if config_name != "" {
-		err := models.FindConfigurations(d, "configuration_group = ? AND configuration_name = ?", group, config_name).Error
+		err := models.FindConfiguration(d, "configuration_group = ? AND configuration_name = ?", group, config_name).Error
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
 	} else {
-		err := models.FindConfigurations(d, "configuration_group = ?", group).Error
+		err := models.FindConfiguration(d, "configuration_group = ?", group).Error
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
 	}
 
 	if len(*d) > 0 {
-		result := models.ParseConfigurations(d)
+		result := models.ParseConfiguration(d)
 		var count *int64
 		if arr, ok := result.([]map[string]string); ok {
 			c := int64(len(arr))
@@ -62,13 +62,13 @@ func GetConfigurationByGroup(c fiber.Ctx) error {
 }
 
 func UpsertConfiguration(c fiber.Ctx) error {
-	body := []models.Configurations{}
+	body := []models.Configuration{}
 
 	if err := handlers.ParseBody(c, &body); err != nil {
 		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	if err := models.CreateConfigurations(body).Error; err != nil {
+	if err := models.CreateConfiguration(body).Error; err != nil {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
@@ -91,8 +91,8 @@ func DeleteConfiguration(c fiber.Ctx) error {
 	}
 
 	// RESET INDEX
-	d := &[]models.GroupConfigurations{}
-	err := models.FindGroupConfigurations(d, "configuration_group = ?", group).Error
+	d := &[]models.GroupConfiguration{}
+	err := models.FindGroupConfiguration(d, "configuration_group = ?", group).Error
 	if err != nil {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
@@ -147,13 +147,13 @@ func ConfigExecuteScript(c fiber.Ctx) error {
 // 		return handlers.BadRequestErrorResponse(c, err)
 // 	}
 
-// 	data := []models.Configurations{}
+// 	data := []models.Configuration{}
 // 	for k, v := range body {
 // 		var valPtr *string
 // 		if str, ok := v.(string); ok {
 // 			valPtr = &str
 // 		}
-// 		data = append(data, models.Configurations{
+// 		data = append(data, models.Configuration{
 // 			ConfigurationGroup: group,
 // 			ConfigurationKey:   k,
 // 			ConfigurationValue: valPtr,
@@ -164,7 +164,7 @@ func ConfigExecuteScript(c fiber.Ctx) error {
 
 // 	count := int64(len(data))
 
-// 	if err := models.CreateConfigurations(data).Error; err != nil {
+// 	if err := models.CreateConfiguration(data).Error; err != nil {
 // 		return handlers.InternalServerErrorResponse(c, err)
 // 	}
 

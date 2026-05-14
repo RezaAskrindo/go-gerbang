@@ -24,17 +24,17 @@ func MainRoutes(app *fiber.App) {
 
 	app.Get("/check-migration", services.CheckMigrationStatus)
 	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)
-	app.Get("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
+	app.Post("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
 
 	app.Get("/info", services.InfoService)
 
 	app.Get("/check-local-service", services.CheckLocalService)
 	app.Get("/proxy-local-service", services.ProxyLocalService)
 
-	app.Get("/configurations/execute", services.ConfigExecuteScript)
-	app.Get("/configurations/:group", services.GetConfigurationByGroup)
-	app.Post("/configurations", services.UpsertConfiguration)
-	app.Delete("/configurations/:group", services.DeleteConfiguration)
+	app.Get("/Configuration/execute", services.ConfigExecuteScript)
+	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
+	app.Post("/Configuration", services.UpsertConfiguration)
+	app.Delete("/Configuration/:group", services.DeleteConfiguration)
 
 	// PUB / SUB
 	app.Post("/publish", services.PublishService)

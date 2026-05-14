@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type Configurations struct {
+type Configuration struct {
 	IdConfiguration    uuid.UUID `gorm:"type:uuid;primaryKey" json:"idConfiguration"`
 	ConfigurationGroup string    `gorm:"not null;size:64" json:"configurationGroup" validate:"required"`
 	ConfigurationName  *string   `gorm:"default:null;size:128" json:"configurationName"`
@@ -19,19 +19,19 @@ type Configurations struct {
 	ConfigurationValue *string   `gorm:"default:null;size:512" json:"configurationValue"`
 }
 
-type GroupConfigurations struct {
+type GroupConfiguration struct {
 	ConfigurationGroup string
 	ConfigurationName  *string
 }
 
-func (c *Configurations) BeforeCreate(tx *gorm.DB) error {
+func (c *Configuration) BeforeCreate(tx *gorm.DB) error {
 	if c.IdConfiguration == uuid.Nil {
 		c.IdConfiguration = uuid.New()
 	}
 	return nil
 }
 
-func CreateConfigurations(configurations []Configurations) *gorm.DB {
+func CreateConfiguration(configuration []Configuration) *gorm.DB {
 	tx := database.GDB.Begin()
 	if tx.Error != nil {
 		return tx
@@ -50,7 +50,7 @@ func CreateConfigurations(configurations []Configurations) *gorm.DB {
 				"configuration_value",
 			}),
 		}).
-		CreateInBatches(configurations, 100).
+		CreateInBatches(configuration, 100).
 		Error
 
 	if err != nil {
@@ -62,18 +62,18 @@ func CreateConfigurations(configurations []Configurations) *gorm.DB {
 }
 
 func UpdateConfigurationIndex(group interface{}, name interface{}, index int) *gorm.DB {
-	return database.GDB.Model(&Configurations{}).Where("configuration_group = ? and configuration_name = ?", group, name).Update("configuration_index", index)
+	return database.GDB.Model(&Configuration{}).Where("configuration_group = ? and configuration_name = ?", group, name).Update("configuration_index", index)
 }
 
-func FindConfigurations(dest interface{}, conds ...interface{}) *gorm.DB {
-	return database.GDB.Model(&Configurations{}).Find(dest, conds...)
+func FindConfiguration(dest interface{}, conds ...interface{}) *gorm.DB {
+	return database.GDB.Model(&Configuration{}).Find(dest, conds...)
 }
 
-func FindGroupConfigurations(dest interface{}, conds ...interface{}) *gorm.DB {
-	return database.GDB.Model(&Configurations{}).Group("configuration_group, configuration_name").Find(dest, conds...)
+func FindGroupConfiguration(dest interface{}, conds ...interface{}) *gorm.DB {
+	return database.GDB.Model(&Configuration{}).Group("configuration_group, configuration_name").Find(dest, conds...)
 }
 
-func ParseConfigurations(configs *[]Configurations) interface{} {
+func ParseConfiguration(configs *[]Configuration) interface{} {
 	hasIndex := false
 
 	for _, c := range *configs {
@@ -120,12 +120,12 @@ func ParseConfigurations(configs *[]Configurations) interface{} {
 }
 
 func DeleteConfigurationByConfName(configurationGroup string, configurationName string) error {
-	tx := database.GDB.Unscoped().Where("configuration_group = ? AND configuration_name = ?", configurationGroup, configurationName).Delete(&Configurations{})
+	tx := database.GDB.Unscoped().Where("configuration_group = ? AND configuration_name = ?", configurationGroup, configurationName).Delete(&Configuration{})
 	if tx.Error != nil {
 		return tx.Error
 	}
 	if tx.RowsAffected == 0 {
-		return fmt.Errorf("no configuration found with groub = %s and name", configurationGroup, configurationName)
+		return fmt.Errorf("no configuration found with group = %s and name = %s", configurationGroup, configurationName)
 	}
 
 	return nil

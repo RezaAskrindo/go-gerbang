@@ -47,13 +47,13 @@ func IsValidEmail(email string) bool {
 // 	}
 // 	mailMutex.RUnlock()
 
-// 	d := &[]models.Configurations{}
-// 	err := models.FindConfigurations(d, "configuration_group = ?", "EMAIL_SERVICE_NAME").Error
+// 	d := &[]models.Configuration{}
+// 	err := models.FindConfiguration(d, "configuration_group = ?", "EMAIL_SERVICE_NAME").Error
 // 	if err != nil {
 // 		return nil
 // 	}
 
-// 	config := models.ParseConfigurations(d)
+// 	config := models.ParseConfiguration(d)
 
 // 	mailMutex.Lock()
 // 	if configMap, ok := config.(map[string]struct{}); ok {
@@ -78,13 +78,13 @@ func GetEmailSendApi() string {
 	}
 	mailMutex.RUnlock()
 
-	d := &[]models.Configurations{}
-	err := models.FindConfigurations(d, "configuration_group = ?", "EMAIL_SERVICE_URL").Error
+	d := &[]models.Configuration{}
+	err := models.FindConfiguration(d, "configuration_group = ?", "EMAIL_SERVICE_URL").Error
 	if err != nil {
 		return ""
 	}
 
-	config := models.ParseConfigurations(d)
+	config := models.ParseConfiguration(d)
 
 	var result string
 	if v, ok := config.(map[string]interface{}); ok {
@@ -114,13 +114,13 @@ func GetEmailResendConfig() []types.ResendKey {
 	}
 	mailMutex.RUnlock()
 
-	d := &[]models.Configurations{}
-	err := models.FindConfigurations(d, "configuration_group = ?", "EMAIL_RESEND_CONFIG").Error
+	d := &[]models.Configuration{}
+	err := models.FindConfiguration(d, "configuration_group = ?", "EMAIL_RESEND_CONFIG").Error
 	if err != nil {
 		return nil
 	}
 
-	config := models.ParseConfigurations(d)
+	config := models.ParseConfiguration(d)
 
 	resendKeys := []types.ResendKey{}
 	if configList, ok := config.([]map[string]string); ok {
@@ -155,13 +155,13 @@ func GetEmailSMTPConfig() []types.SMTPConfig {
 	}
 	mailMutex.RUnlock()
 
-	d := &[]models.Configurations{}
-	err := models.FindConfigurations(d, "configuration_group = ?", "EMAIL_SMTP_CONFIG").Error
+	d := &[]models.Configuration{}
+	err := models.FindConfiguration(d, "configuration_group = ?", "EMAIL_SMTP_CONFIG").Error
 	if err != nil {
 		return nil
 	}
 
-	config := models.ParseConfigurations(d)
+	config := models.ParseConfiguration(d)
 
 	smtpConfig := []types.SMTPConfig{}
 	if configList, ok := config.([]map[string]string); ok {
