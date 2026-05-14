@@ -1,0 +1,1 @@
+import{importShared as t}from"./__federation_fn_import-BzoRncsP.js";const{createContext:o,useContext:r}=await t("react"),s={theme:"system",setTheme:()=>null},n=o(s),m=()=>{const e=r(n);if(e===void 0)throw new Error("useTheme must be used within a ThemeProvider");return e};export{n as T,m as u};
