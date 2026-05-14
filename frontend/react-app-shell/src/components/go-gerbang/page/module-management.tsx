@@ -47,7 +47,7 @@ import {
 import { SheetClose } from "@/components/ui/sheet";
 
 import { BackendUrlBase, FetchCsrfToken } from "@/services/baseService";
-import { fetchSWR, useConfigurations, useDeleteConfigurations } from "@/services/use-swr-service";
+import { fetchSWR, useConfiguration, useDeleteConfiguration } from "@/services/use-swr-service";
 
 import CardInformation from "@/components/card-information";
 import SheetForm from "@/components/sheet-form";
@@ -137,7 +137,7 @@ function FormModule({
     }
 
     if (data && values.module_name) {
-      await useDeleteConfigurations("MODULE_CONFIG", values.module_name);
+      await useDeleteConfiguration("MODULE_CONFIG", values.module_name);
     }
     
     let payload = [
@@ -198,7 +198,7 @@ function FormModule({
 
     const getCsrf = await FetchCsrfToken();
     
-    const res = await fetch(`${BackendUrlBase}/configurations`, {
+    const res = await fetch(`${BackendUrlBase}/Configuration`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-SGCsrf-Token": getCsrf },
@@ -370,7 +370,7 @@ export default function ModuleManagement() {
   const [openAlert, setOpenAlert] = useState(false);
   const [dataForm, setDataFrom] = useState<TDetailModule>();
 
-  const { data: moduleConfig, mutate } = useConfigurations("MODULE_CONFIG");
+  const { data: moduleConfig, mutate } = useConfiguration("MODULE_CONFIG");
 
   const backendModule = useMemo(
     () => moduleConfig?.data?.filter((el: TDetailModule) => el.module_type === "Backend"),
@@ -392,7 +392,7 @@ export default function ModuleManagement() {
   
   const RunScript = (work_dir: string, file: string) => {
     toast.promise(
-      fetch(`${BackendUrlBase}/configurations/execute?work_dir=${work_dir}&file=${file}`).then(async (res) => {
+      fetch(`${BackendUrlBase}/Configuration/execute?work_dir=${work_dir}&file=${file}`).then(async (res) => {
         if (!res.ok) throw new Error("Request failed")
         const data = await res.json()
         if (!data.status) throw new Error(data.message || "Failed to Execute")
@@ -556,7 +556,7 @@ export default function ModuleManagement() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction variant="outline">Cancel</AlertDialogAction>
-            {dataForm?.module_name && <AlertDialogCancel variant="destructive" onClick={() => useDeleteConfigurations("MODULE_CONFIG", dataForm?.module_name)}>Delete</AlertDialogCancel>}
+            {dataForm?.module_name && <AlertDialogCancel variant="destructive" onClick={() => useDeleteConfiguration("MODULE_CONFIG", dataForm?.module_name)}>Delete</AlertDialogCancel>}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -67,10 +67,10 @@ export function CheckMigration() {
   return { data, isLoading };
 }
 
-export function useConfigurations(group: string, config_name?: string) {
-  let url = `${BackendUrlBase}/configurations/${group}`
+export function useConfiguration(group: string, config_name?: string) {
+  let url = `${BackendUrlBase}/Configuration/${group}`
   if (config_name) {
-    url = `${BackendUrlBase}/configurations/${group}?config_name=${config_name}`
+    url = `${BackendUrlBase}/Configuration/${group}?config_name=${config_name}`
   }
   
   const { data, error, isLoading, mutate } = useSWR(url, fetchSWR)
@@ -82,13 +82,13 @@ export function useConfigurations(group: string, config_name?: string) {
   }
 }
 
-export const useDeleteConfigurations = async (
+export const useDeleteConfiguration = async (
   group: string,
   name: string
 ) => {
   const getCsrf = await FetchCsrfToken();
   
-  const res = await fetch(`${BackendUrlBase}/configurations/${group}?config_name=${name}`, {
+  const res = await fetch(`${BackendUrlBase}/Configuration/${group}?config_name=${name}`, {
     method: "DELETE",
     credentials: "include",
     headers: { "Content-Type": "application/json", "X-SGCsrf-Token": getCsrf },

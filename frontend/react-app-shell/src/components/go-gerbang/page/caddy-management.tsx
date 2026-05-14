@@ -61,7 +61,7 @@ export default function CaddyManagement() {
             <AlertDialogCancel variant="destructive" onClick={() => {
               if (dataForm?.notif_type) {
                 toast.promise(
-                  useDeleteConfigurations(dataForm?.notif_type, dataForm?.sender),
+                  useDeleteConfiguration(dataForm?.notif_type, dataForm?.sender),
                   {
                     loading: "Waiting...",
                     success: () => {

@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/sheet";
 
 import { BackendUrlBase, FetchCsrfToken } from "@/services/baseService";
-import { useConfigurations, useDeleteConfigurations } from "@/services/use-swr-service";
+import { useConfiguration, useDeleteConfiguration } from "@/services/use-swr-service";
 
 import CardInformation from "@/components/card-information";
 
@@ -183,12 +183,12 @@ function SheetForm({
     }
     
     if (dataForm && values.notif_type && values.sender) {
-      await useDeleteConfigurations(values.notif_type, values.sender);
+      await useDeleteConfiguration(values.notif_type, values.sender);
     }
 
     const getCsrf = await FetchCsrfToken();
         
-    const response = await (await fetch(`${BackendUrlBase}/configurations`, {
+    const response = await (await fetch(`${BackendUrlBase}/Configuration`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-SGCsrf-Token": getCsrf },
@@ -372,8 +372,8 @@ export default function NotificationManagement() {
   const [openDialog, setOpenDialog] = useState(false);
   const [dataForm, setDataFrom] = useState<TFormNotification>();
 
-  const { data: dataResend, mutate: mutateResend } = useConfigurations("EMAIL_RESEND_CONFIG");
-  const { data: dataSMTP, mutate: mutateSMTP } = useConfigurations("EMAIL_SMTP_CONFIG");
+  const { data: dataResend, mutate: mutateResend } = useConfiguration("EMAIL_RESEND_CONFIG");
+  const { data: dataSMTP, mutate: mutateSMTP } = useConfiguration("EMAIL_SMTP_CONFIG");
 
   const mutateData = () => {
     mutateResend();
@@ -601,7 +601,7 @@ export default function NotificationManagement() {
             <AlertDialogCancel variant="destructive" onClick={() => {
               if (dataForm?.notif_type) {
                 toast.promise(
-                  useDeleteConfigurations(dataForm?.notif_type, dataForm?.sender),
+                  useDeleteConfiguration(dataForm?.notif_type, dataForm?.sender),
                   {
                     loading: "Waiting...",
                     success: () => {

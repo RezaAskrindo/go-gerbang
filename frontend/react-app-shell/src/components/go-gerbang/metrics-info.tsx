@@ -2,6 +2,8 @@ import { useEffect, useState, startTransition } from "react";
 import useSWR from "swr";
 
 import Highcharts from 'highcharts';
+// import "highcharts/css/highcharts.css"
+import 'highcharts/themes/adaptive';
 
 Highcharts.setOptions({
   xAxis: {
@@ -37,6 +39,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import { BackendUrlBase } from "@/services/baseService";
 import { SWRDashboardConfig } from "@/services/use-swr-service";
 
@@ -128,7 +131,7 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0 min-h-48">
-          <Chart>
+          <Chart title="">
             <Area.Series data={ramSeries[0].data} />
             <Area.Series data={ramSeries[1].data} />
             <Area.Series data={ramSeries[2].data} />
@@ -143,7 +146,7 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart>
+          <Chart title="">
             <Area.Series data={cpuSeries} />
           </Chart>
         </CardFooter>
@@ -156,7 +159,7 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart>
+          <Chart title="">
             <Area.Series data={rtimeSeries} />
           </Chart>
         </CardFooter>
@@ -169,7 +172,7 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart>
+          <Chart title="">
             <Area.Series data={connsSeries} />
           </Chart>
         </CardFooter>
