@@ -1,8 +1,9 @@
-import path from 'node:path'
 import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
-import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+import path from 'node:path'
+import tailwindcss from '@tailwindcss/vite'
+// import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 import federation from '@originjs/vite-plugin-federation'
 
 // https://vite.dev/config/
@@ -10,7 +11,7 @@ export default defineConfig({
   plugins: [
     vue(), 
     tailwindcss(),
-    cssInjectedByJsPlugin(),
+    // cssInjectedByJsPlugin(),
     federation({
       name: 'app-shell',
       filename: 'remoteEntry.js',
