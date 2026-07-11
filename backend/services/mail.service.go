@@ -99,10 +99,10 @@ func MailTesting(c fiber.Ctx) error {
 
 	if provider == "Resend" {
 		if !handlers.SendResendMail(dataSend) {
-			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using "+provider))
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
 		}
 	} else if provider == "SMTP" && !handlers.SendSMTPMail(dataSend) {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to send email using "+provider))
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
 	} else {
 		return handlers.SuccessResponse(c, true, "Send Mail Not On Configuration", nil, nil)
 	}
