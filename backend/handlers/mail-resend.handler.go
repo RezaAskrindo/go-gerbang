@@ -44,7 +44,7 @@ func SendResendMail(list *types.ListEmail) bool {
 			zap.String("path", resendEmailStat),
 			zap.Int("status", EmailErrorCode),
 			zap.Duration("duration", duration),
-			zap.Error(fmt.Errorf(list.Sender+EmailErrorNotInDB)),
+			zap.Error(fmt.Errorf("%s", list.Sender+EmailErrorNotInDB)),
 		)
 		return false
 	}

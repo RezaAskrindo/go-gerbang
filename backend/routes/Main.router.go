@@ -29,7 +29,7 @@ func MainRoutes(app *fiber.App) {
 	app.Get("/info", services.InfoService)
 
 	app.Get("/check-local-service", services.CheckLocalService)
-	app.Get("/proxy-local-service", services.ProxyLocalService)
+	app.All("/proxy-local-service", services.ProxyLocalService)
 
 	app.Get("/Configuration/execute", services.ConfigExecuteScript)
 	app.Get("/Configuration/:group", services.GetConfigurationByGroup)

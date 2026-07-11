@@ -34,7 +34,7 @@ func SendSMTPMail(list *types.ListEmail) bool {
 			zap.String("path", smtpEmailStat),
 			zap.Int("status", EmailErrorCode),
 			zap.Duration("duration", duration),
-			zap.Error(fmt.Errorf(list.Sender+EmailErrorNotInDB)),
+			zap.Error(fmt.Errorf("%s", list.Sender+EmailErrorNotInDB)),
 		)
 		return false
 	}

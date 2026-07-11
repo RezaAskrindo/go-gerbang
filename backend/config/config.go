@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -18,7 +19,9 @@ var PathEnv = BasePath + "env"
 // var PathEnv = BasePath + ".env"
 
 func Config(key string) string {
-	if err := godotenv.Load(PathEnv); err != nil {
+	// if err := godotenv.Load(PathEnv); err != nil {
+	// For Linux we don't use PathEnv
+	if err := godotenv.Load(); err != nil {
 		log.Printf("Error loading .env file or not define env:%s", key)
 	}
 	return os.Getenv(key)
@@ -49,3 +52,16 @@ var SecureCookies = false //change true to prod false to dev
 
 // SIKA REPOSITORY
 // var SikaRepoURL = Config("SIKA_REPO_URL")
+
+func GetTrustedOrigins() []string {
+	originsStr := Config("TRUSTED_ORIGINS")
+	if originsStr == "" {
+		return []string{} // or default origins
+	}
+
+	origins := strings.Split(originsStr, ",")
+	for i := range origins {
+		origins[i] = strings.TrimSpace(origins[i])
+	}
+	return origins
+}

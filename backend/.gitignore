@@ -7,3 +7,6 @@ tmp/*
 .env.local
 node_modules
 vendor
+
+go-gerbang
+go-gerbang.exe

@@ -42,3 +42,16 @@ If env not work
 ## Running in background in LINUX
 ./golangapp/apigateway-9000 & disown
 
+## For Alpine OS
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o go-gerbang .
+
+## Send File with SCP
+Build one file:
+tar -czf deploy.tar.gz go-gerbang .env web/
+
+Send file:
+scp deploy.tar.gz root@202.155.94.33:/home/gerbang/
+
+Extract file:
+cd ../home/gerbang
+tar -xzf deploy.tar.gz

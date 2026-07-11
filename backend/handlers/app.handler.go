@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -102,6 +103,31 @@ var (
 func LoadConfig(filename string) (*types.ConfigServices, error) {
 	file, err := os.Open(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// create parent directories if they don't exist
+			dir := filepath.Dir(filename)
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("could not create config directory: %w", err)
+			}
+
+			// create the file with a default config
+			defaultConfig := &types.ConfigServices{} // fill with sensible defaults if needed
+
+			newFile, err := os.Create(filename)
+			if err != nil {
+				return nil, fmt.Errorf("could not create config file: %w", err)
+			}
+			defer newFile.Close()
+
+			encoder := json.NewEncoder(newFile)
+			encoder.SetIndent("", "  ")
+			if err := encoder.Encode(defaultConfig); err != nil {
+				return nil, fmt.Errorf("could not write default config: %w", err)
+			}
+
+			return defaultConfig, nil
+		}
+
 		return nil, fmt.Errorf("could not open config file: %w", err)
 	}
 	defer file.Close()

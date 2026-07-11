@@ -18,8 +18,6 @@ import (
 	// fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
-	// "github.com/gofiber/fiber/v3/middleware/proxy"
-	// "github.com/valyala/fasthttp"
 )
 
 func MainProxyRoutes(app *fiber.App) {

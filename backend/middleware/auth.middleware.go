@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,18 +20,42 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/gofiber/fiber/v3/middleware/session"
+	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
 	_ "gorm.io/driver/postgres"
 )
 
-// DOMAINESIA NOT SUPPORT
-// var StorageRedisFiber = redis.New(redis.Config{
-// 	URL: config.Config("REDIS_ADDRESS_FULL"),
-// })
+func initializeStorage() (storage fiber.Storage) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Redis connection failed: %v\n", r)
+			log.Printf("Falling back to in-memory storage")
+			storage = memory.New()
+		}
+	}()
 
-var StorageRedisFiber = redis.New()
+	host := config.Config("REDIS_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
+	port, _ := strconv.Atoi(config.Config("REDIS_PORT"))
+	if port == 0 {
+		port = 6379
+	}
+	// Try to initialize Redis
+	storage = redis.New(redis.Config{
+		Host:     host,
+		Port:     port,
+		Password: config.Config("REDIS_PASSWORD"),
+	})
+
+	return storage
+}
+
+var StorageRedisFiber fiber.Storage = initializeStorage()
 
 const (
 	UserId           = "userId"
@@ -91,11 +116,8 @@ var CsrfProtection = csrf.New(csrf.Config{
 	KeyGenerator: func() string {
 		return handlers.RandomStringV1(32)
 	},
-	Session: CsrfStore,
-	// NEED FOR IMPROVEMENT
-	TrustedOrigins: []string{
-		"http://localhost:3000",
-	},
+	Session:        CsrfStore,
+	TrustedOrigins: config.GetTrustedOrigins(),
 })
 
 var CsrfStore = session.NewStore(session.Config{

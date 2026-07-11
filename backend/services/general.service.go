@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
-	"github.com/gofiber/fiber/v3/middleware/proxy"
 )
 
 func IndexService(c fiber.Ctx) error {
@@ -78,30 +78,6 @@ func InfoService(c fiber.Ctx) error {
 	}
 
 	return c.JSON(handlers.MapMicroService.Services)
-}
-
-func CheckLocalService(c fiber.Ctx) error {
-	url := c.Query("url")
-	if url == "" {
-		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need url params"))
-	}
-
-	getResponse := fiber.Query[bool](c, "getRes")
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return handlers.SuccessResponse(c, true, "url is not active", false, nil)
-	}
-	defer resp.Body.Close()
-
-	if getResponse {
-		body, _ := io.ReadAll(resp.Body)
-		c.Set("Content-Type", "application/json")
-		c.Status(resp.StatusCode)
-		return c.Send(body)
-	}
-
-	return handlers.SuccessResponse(c, true, "url is active", true, nil)
 }
 
 func RestartHandler(c fiber.Ctx) error {
@@ -208,22 +184,83 @@ func GetStatsLogger(c fiber.Ctx) error {
 	}
 }
 
+func CheckLocalService(c fiber.Ctx) error {
+	url := c.Query("url")
+	if url == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need url params"))
+	}
+
+	getResponse := fiber.Query[bool](c, "getRes")
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return handlers.SuccessResponse(c, true, "url is not active", false, nil)
+	}
+	defer resp.Body.Close()
+
+	if getResponse {
+		body, _ := io.ReadAll(resp.Body)
+		c.Set("Content-Type", "application/json")
+		c.Status(resp.StatusCode)
+		return c.Send(body)
+	}
+
+	return handlers.SuccessResponse(c, true, "url is active", true, nil)
+}
+
 func ProxyLocalService(c fiber.Ctx) error {
 	urlQuery := c.Query("url")
 	if urlQuery == "" {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need url params"))
 	}
 
-	// target, _ := url.Parse(urlQuery)
-	// proxy := httputil.NewSingleHostReverseProxy(target)
+	body := bytes.NewReader(c.Request().Body())
 
-	// proxy.WithClient(proxyroute.ProxyClient)
-
-	if err := proxy.Do(c, urlQuery); err != nil {
-		return err
+	req, err := http.NewRequest(c.Method(), urlQuery, body)
+	if err != nil {
+		return handlers.SuccessResponse(c, true, "invalid request", false, nil)
 	}
 
-	c.Response().Header.ContentType()
-	// c.Response().Header.Del(fiber.HeaderServer)
-	return nil
+	headersToKeep := []string{
+		"Content-Type",
+		"Accept",
+		"Content-Length",
+		"Authorization",
+	}
+
+	for _, headerName := range headersToKeep {
+		if value := c.Request().Header.Peek(headerName); value != nil {
+			req.Header.Set(headerName, string(value))
+		}
+	}
+
+	req.Header.Set("User-Agent", "GO GERBANG CLIENT")
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return handlers.SuccessResponse(c, true, "url is not active", false, nil)
+	}
+	defer resp.Body.Close()
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			c.Response().Header.Add(key, value)
+		}
+	}
+
+	c.Status(resp.StatusCode)
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return handlers.SuccessResponse(c, true, "error reading response", false, nil)
+	}
+
+	if len(respBody) == 0 {
+		return handlers.SuccessResponse(c, true, "response body is empty", false, nil)
+	}
+
+	return c.SendStream(resp.Body)
 }

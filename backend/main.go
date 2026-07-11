@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
-	"regexp"
 	"time"
 
 	"go-gerbang/broker"
@@ -34,8 +34,6 @@ import (
 const (
 	appName = "GO Gerbang"
 )
-
-var allowedOriginRegex *regexp.Regexp
 
 func main() {
 	logFile, err := os.OpenFile("go-gerbang.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -68,11 +66,8 @@ func main() {
 
 	app.Use(idempotency.New())
 
-	allowedOriginRegex, _ = regexp.Compile(config.Config("ALLOWED_ORIGIN_REGEX"))
 	app.Use(cors.New(cors.Config{
-		AllowOriginsFunc: func(origin string) bool {
-			return allowedOriginRegex.MatchString(origin)
-		},
+		AllowOrigins:     config.GetTrustedOrigins(),
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Sgcsrf-Token"},
 		AllowCredentials: true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -125,6 +120,9 @@ func main() {
 		FailureThreshold: 3,               // Max failures before opening the circuit
 		Timeout:          5 * time.Second, // Wait time before retrying
 		SuccessThreshold: 2,               // Required successes to move back to closed state
+		IsFailure: func(c fiber.Ctx, err error) bool {
+			return c.Response().StatusCode() >= http.StatusInternalServerError
+		},
 	})
 
 	app.Get("/health/circuit", cb.HealthHandler())
