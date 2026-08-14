@@ -6,15 +6,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/database"
 	"go-gerbang/handlers"
+	"go-gerbang/middleware"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/contrib/v3/circuitbreaker"
 	"github.com/gofiber/fiber/v3"
@@ -28,14 +31,29 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
-	"github.com/gofiber/fiber/v3/middleware/static"
+	"go.uber.org/automaxprocs/maxprocs"
 )
 
+// NOTE: FOR LOW VPS
 const (
 	appName = "GO Gerbang"
+	// coreCPU     = 1   // for VCPU is 1
+	memoryLimit = 128 // for Memory Limit
 )
 
 func main() {
+	// runtime.GOMAXPROCS(coreCPU) // change to maxprocs
+
+	if _, err := maxprocs.Set(); err != nil {
+		log.Printf("automaxprocs: %v", err)
+	}
+	if _, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithRatio(0.50)); err != nil {
+		debug.SetMemoryLimit(memoryLimit << 20) // change to memlimit
+		log.Printf("automemlimit: %v", err)
+	}
+
+	debug.SetGCPercent(50)
+
 	logFile, err := os.OpenFile("go-gerbang.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v\n", err)
@@ -53,18 +71,21 @@ func main() {
 	broker.StartingNatsClient()
 
 	app := fiber.New(fiber.Config{
-		JSONEncoder:   json.Marshal,
-		JSONDecoder:   json.Unmarshal,
-		BodyLimit:     50 * 1024 * 1024, // this is the default limit of 50MB
-		ServerHeader:  "Go Gerbang",
-		AppName:       appName,
-		CaseSensitive: true,
-		ProxyHeader:   "X-Forwarded-For",
+		JSONEncoder:       json.Marshal,
+		JSONDecoder:       json.Unmarshal,
+		BodyLimit:         5 * 1024 * 1024, // this is the default limit of 5MB
+		ServerHeader:      appName,
+		AppName:           appName,
+		CaseSensitive:     true,
+		ProxyHeader:       "X-Forwarded-For",
+		ReduceMemoryUsage: true,
 	})
 
 	app.All("/live", healthcheck.New())
 
-	app.Use(idempotency.New())
+	app.Use(idempotency.New(idempotency.Config{
+		Storage: middleware.StorageIdempotency,
+	}))
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.GetTrustedOrigins(),
@@ -89,13 +110,15 @@ func main() {
 	app.Use(requestid.New())
 
 	app.Use(limiter.New(limiter.Config{
+		Storage: middleware.StorageLimiter,
 		Next: func(c fiber.Ctx) bool {
 			return c.IP() == "127.0.0.1" // limit will apply to this IP
 		},
 		Max:        1000,
 		Expiration: 60 * time.Second,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return c.Get("X-forwarded-for")
+			// return c.Get("X-forwarded-for")
+			return c.IP()
 		},
 		LimitReached: func(c fiber.Ctx) error {
 			return c.SendString("be slow bro...")
@@ -104,9 +127,9 @@ func main() {
 
 	app.Use(earlydata.New())
 
-	// app.Get("/", func(c fiber.Ctx) error {
-	// 	return c.Send([]byte("Welcome to GO GERBANG - by Muhammad Reza"))
-	// })
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Send([]byte("Welcome to GO GERBANG API GATEWAY - by Muhammad Reza"))
+	})
 
 	ctx := context.Background()
 	err = handlers.InitLogger(ctx)
@@ -134,16 +157,17 @@ func main() {
 	routes.MainRoutes(app)
 	routes.AuthRoutes(app)
 
-	app.Get("/*", static.New("./web"))
+	// For reducing memory and move to caddy
+	// app.Get("/*", static.New("./web"))
 	// SPA fallback — catches everything else
-	app.Get("*", static.New("./web/index.html"))
+	// app.Get("*", static.New("./web/index.html"))
 
-	// app.Use("*", func(c fiber.Ctx) error {
-	// 	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
-	// })
+	app.Use("*", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
+	})
 
-	fmt.Println("✅ server running " + config.Config("PORT_APIGATEWAY"))
-	if err := app.Listen(config.Config("PORT_APIGATEWAY"), fiber.ListenConfig{
+	fmt.Println("✅ server running " + config.APP_PORT)
+	if err := app.Listen(config.APP_PORT, fiber.ListenConfig{
 		EnablePrefork:         false,
 		DisableStartupMessage: true,
 	}); err != nil {

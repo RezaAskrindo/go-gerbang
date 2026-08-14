@@ -37,25 +37,16 @@ func MainProxyRoutes(app *fiber.App) {
 	RegisterRoutes(app)
 }
 
-// var ProxyClient = &fasthttp.Client{
-// 	NoDefaultUserAgentHeader: true,
-// 	DisablePathNormalizing:   true,
-// 	MaxConnsPerHost:          10000,
-// 	MaxIdleConnDuration:      90 * time.Second,
-// 	ReadTimeout:              30 * time.Second,
-// 	WriteTimeout:             30 * time.Second,
-// 	MaxConnWaitTimeout:       10 * time.Second,
-// }
-
+// NOTE: FOR LOW VPS
 var ProxyClient = &http.Client{
-	Timeout: 5 * time.Minute,
+	Timeout: 20 * time.Second,
 	Transport: &http.Transport{
-		MaxConnsPerHost:     10000,
-		IdleConnTimeout:     90 * time.Second,
+		MaxConnsPerHost:     100,
+		MaxIdleConnsPerHost: 50,
+		MaxIdleConns:        25,
+		IdleConnTimeout:     20 * time.Second,
 		DisableKeepAlives:   false,
 		DisableCompression:  false,
-		MaxIdleConns:        10000,
-		MaxIdleConnsPerHost: 10000,
 	},
 }
 
@@ -140,74 +131,6 @@ func RegisterRoutes(app *fiber.App) {
 		app.All(service.Path+"*", proxyHandler(service))
 	}
 }
-
-// USING FASTHTTP
-// func proxyHandler(service types.Service) fiber.Handler {
-// 	return func(c fiber.Ctx) error {
-// 		start := time.Now()
-
-// 		requestBody := string(c.Body())
-// 		method := c.Method()
-// 		path := c.OriginalURL()
-
-// 		prefixLen := len(service.Path)
-// 		url := service.Url + c.OriginalURL()[prefixLen:]
-// 		// err := proxy.DoDeadline(c, url, time.Now().Add(10*time.Second))
-// 		err := proxy.DoDeadline(c, url, time.Now().Add(5*time.Minute))
-
-// 		responseBody := string(c.Response().Body())
-// 		status := c.Response().StatusCode()
-// 		duration := time.Since(start)
-
-// 		userField := zap.Skip()
-// 		if user, ok := c.Locals("user").(*models.UserData); ok {
-// 			userField = zap.String("user", user.Username)
-// 		}
-
-// 		if err != nil {
-// 			if status == 0 || status == fiber.StatusOK {
-// 				status = fiber.StatusBadGateway
-// 			}
-// 			handlers.ZapLogger.Error(service.Service,
-// 				zap.String("method", method),
-// 				zap.String("path", path),
-// 				zap.Int("status", status),
-// 				zap.Duration("duration", duration),
-// 				zap.Error(err),
-// 				userField,
-// 			)
-// 			return handlers.InternalServerErrorResponse(c, fmt.Errorf("upstream unavailable: %v", err))
-// 		}
-
-// 		contentType := string(c.Response().Header.ContentType())
-
-// 		var respLog zap.Field
-// 		if strings.Contains(contentType, "application/json") || strings.HasPrefix(contentType, "text/") {
-// 			maxLen := 1024 // 1KB
-// 			respStr := string(responseBody)
-// 			if len(respStr) > maxLen {
-// 				respStr = respStr[:maxLen] + "...(truncated)"
-// 			}
-// 			respLog = zap.String("response", respStr)
-// 		} else {
-// 			respLog = zap.String("response_skipped", "binary or large response")
-// 		}
-
-// 		handlers.ZapLogger.Info(service.Service,
-// 			zap.String("method", method),
-// 			zap.String("path", path),
-// 			zap.Int("status", status),
-// 			zap.Duration("duration", duration),
-// 			zap.String("request", requestBody),
-// 			respLog,
-// 			zap.Int("response_size", len(responseBody)),
-// 			zap.String("content_type", contentType),
-// 			userField,
-// 		)
-
-// 		return nil
-// 	}
-// }
 
 // USING NET HTTP
 func proxyHandler(service types.Service) fiber.Handler {

@@ -151,6 +151,7 @@ const DetailLogProxy: FC<DetailLogProxyProps> = ({ row, dateBegin, dateEnd }) =>
               <TabsList>
                 <TabsTrigger value="request">Request Log</TabsTrigger>
                 <TabsTrigger value="response">Response Log</TabsTrigger>
+                <TabsTrigger value="error">Error Log</TabsTrigger>
               </TabsList>
               <TabsContent value="request">
                 {raw.fields?.request ? <pre
@@ -169,6 +170,15 @@ const DetailLogProxy: FC<DetailLogProxyProps> = ({ row, dateBegin, dateEnd }) =>
                     <CodeHighlighter code={raw.fields?.response} />
                   </Suspense>
                 </pre> : "no response body"}
+              </TabsContent>
+              <TabsContent value="error" className="w-full">
+                {raw.fields?.error ? <pre
+                  className="no-scrollbar min-w-0 max-w-full overflow-x-auto outline-none has-data-highlighted-line:px-0 has-data-line-numbers:px-0 has-data-[slot=tabs]:p-0"
+                >
+                  <Suspense fallback={<p>Loading...</p>}>
+                    <CodeHighlighter code={raw.fields?.error} />
+                  </Suspense>
+                </pre> : "no error body"}
               </TabsContent>
             </Tabs>
           </DialogContent>
@@ -359,7 +369,11 @@ export default function LogManagement() {
               </PopoverContent>
             </Popover>
           </div>
-          <Button type="button" variant="outline" onClick={() => trigger()}>
+          <Button type="button" variant="outline" onClick={() => {
+            if (dateBegin && dateEnd) {
+              trigger()
+            }
+          }} disabled={!dateBegin || !dateEnd}>
             <RefreshCcw />
             Reload
           </Button>

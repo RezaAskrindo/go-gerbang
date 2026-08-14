@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"go-gerbang/handlers"
 	"go-gerbang/models"
@@ -113,7 +114,9 @@ func ConfigExecuteScript(c fiber.Ctx) error {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need config_url params"))
 	}
 
-	if _, err := os.Stat(config_work_dir + "\\" + config_file); err != nil {
+	fullPath := filepath.Join(config_work_dir, config_file)
+
+	if _, err := os.Stat(fullPath); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error: file not found",
 			"err":     err.Error(),
@@ -122,7 +125,7 @@ func ConfigExecuteScript(c fiber.Ctx) error {
 
 	// Run in background goroutine (non-blocking)
 	go func() {
-		handlers.ExecuteScript(config_work_dir+"\\"+config_file, config_work_dir)
+		_ = handlers.ExecuteScript(fullPath, config_work_dir)
 	}()
 
 	return c.JSON(fiber.Map{

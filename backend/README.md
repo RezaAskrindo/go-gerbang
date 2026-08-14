@@ -43,7 +43,7 @@ If env not work
 ./golangapp/apigateway-9000 & disown
 
 ## For Alpine OS
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o go-gerbang .
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o go-gerbang .
 
 ## Send File with SCP
 Build one file:

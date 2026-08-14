@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useState } from "react";
 import hljs from 'highlight.js/lib/core';
 import json from 'highlight.js/lib/languages/json';
+import bash from 'highlight.js/lib/languages/bash';
 import 'highlight.js/styles/github-dark.css';
 
 import { copyToClipboard, prettyPrintJson } from "./helpers";
@@ -9,21 +10,28 @@ import { Check, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 
 hljs.registerLanguage('json', json);
+hljs.registerLanguage('sh', bash);
 
-export default function HighlightedJson({ code }: { code: string }) {
+export default function HighlightedJson({ 
+  code, 
+  lang="json" 
+}: { 
+  code: string 
+  lang?: "json" | "sh"
+}) {
   const [html, setHtml] = useState("");
   const [isCopy, setIsCopy] = useState(false);
 
   useEffect(() => {
-    console.log(prettyPrintJson(code))
-    const highlighted = hljs.highlight(prettyPrintJson(code), { language: 'json' }).value;
+    // console.log(prettyPrintJson(code))
+    const highlighted = hljs.highlight(prettyPrintJson(code), { language: lang }).value;
     startTransition(() => {
       setHtml(highlighted);
     })
   }, [code]);
 
   return (
-    <pre className="hljs p-4 relative rounded bg-neutral-800 overflow-auto">
+    <pre className="hljs px-3 py-1 relative rounded overflow-auto min-h-14 text-wrap">
       <div className="absolute right-2 top-2 flex gap-1">
         <Button variant="secondary" size="icon" onClick={() => {
           const blob = new Blob([prettyPrintJson(code)], { type: "application/json" });

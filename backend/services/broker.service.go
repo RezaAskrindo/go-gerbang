@@ -98,60 +98,82 @@ func handleMsg(msg *nats.Msg) {
 		return
 	}
 
-	ImageEmail := GetImageEmail(email.Sender, email.Provider)
-	getImage := ImageEmail
+	html, err := handlers.MailRenderer.Render(email.Template,
+		map[string]any{
+			"Logo":    GetImageEmail(email.Sender, email.Provider),
+			"Title":   email.Data["title"],
+			"Message": email.Data["message"],
+			"Footer":  "Ini email otomatis",
+		})
 
-	dataSend := new(types.ListEmail)
-	dataSend.Sender = email.Sender
-	dataSend.Subject = email.Subject
-	dataSend.BodyTemplateText = email.Title + email.BodyText + email.Footer
-	dataSend.BodyTemplateHtml = `<div style="margin: 0px; padding: 0px;" bgcolor="#FFFFFF">
-		<table width="100%" height="100%" style="min-width: 348px;" border="0" cellspacing="0" cellpadding="0" lang="en">
-			<tbody>
-				<tr height="32" style="height: 32px;">
-					<td></td>
-				</tr>
-				<tr align="center">
-					<td>
-						<table border="0" cellspacing="0" cellpadding="0" style="padding-bottom: 20px; max-width: 516px; min-width: 220px;">
-							<tbody>
-								<tr>
-									<td width="8" style="width: 8px;"></td>
-									<td>
-										<div style="border-style: solid; border-width: thin; border-color: rgb(218, 220, 224); border-radius: 8px; padding: 40px 20px;" align="center">
-											` + getImage + `
-											<div style="font-family: Google Sans, Roboto, RobotoDraft, Helvetica, Arial, sans-serif; border-bottom: thin solid rgb(218, 220, 224); color: rgba(0, 0, 0, 0.87); line-height: 32px; padding-bottom: 24px; text-align: center; word-break: break-word;">
-												<div style="font-size: 24px;">
-													` + email.Title + `
-												</div>
-											</div>
-											<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); line-height: 20px; padding-top: 20px; text-align: center;">
-												` + email.Body + `
-											</div>
-										</div>
-										<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; color: rgba(0, 0, 0, 0.54); font-size: 11px; line-height: 18px; padding-top: 12px; text-align: center;">
-											` + email.Footer + `
-										</div>
-									</td>
-									<td width="8" style="width: 8px;"></td>
-								</tr>
-							</tbody>
-						</table>
-					</td>
-				</tr>
-				<tr height="32" style="height: 32px;">
-					<td></td>
-				</tr>
-			</tbody>
-		</table>
-	</div>`
-	dataSend.Emails = email.Emails
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	if email.Provider == "Resend" {
+	dataSend := &types.ListEmail{
+		Sender:           email.Sender,
+		Subject:          email.Subject,
+		BodyTemplateText: "",
+		BodyTemplateHtml: html,
+		Emails:           email.Emails,
+	}
+
+	// ImageEmail := GetImageEmail(email.Sender, email.Provider)
+	// getImage := ImageEmail
+
+	// dataSend := new(types.ListEmail)
+	// dataSend.Sender = email.Sender
+	// dataSend.Subject = email.Subject
+	// dataSend.BodyTemplateText = email.Title + email.BodyText + email.Footer
+	// dataSend.BodyTemplateHtml = `<div style="margin: 0px; padding: 0px;" bgcolor="#FFFFFF">
+	// 	<table width="100%" height="100%" style="min-width: 348px;" border="0" cellspacing="0" cellpadding="0" lang="en">
+	// 		<tbody>
+	// 			<tr height="32" style="height: 32px;">
+	// 				<td></td>
+	// 			</tr>
+	// 			<tr align="center">
+	// 				<td>
+	// 					<table border="0" cellspacing="0" cellpadding="0" style="padding-bottom: 20px; max-width: 516px; min-width: 220px;">
+	// 						<tbody>
+	// 							<tr>
+	// 								<td width="8" style="width: 8px;"></td>
+	// 								<td>
+	// 									<div style="border-style: solid; border-width: thin; border-color: rgb(218, 220, 224); border-radius: 8px; padding: 40px 20px;" align="center">
+	// 										` + getImage + `
+	// 										<div style="font-family: Google Sans, Roboto, RobotoDraft, Helvetica, Arial, sans-serif; border-bottom: thin solid rgb(218, 220, 224); color: rgba(0, 0, 0, 0.87); line-height: 32px; padding-bottom: 24px; text-align: center; word-break: break-word;">
+	// 											<div style="font-size: 24px;">
+	// 												` + email.Title + `
+	// 											</div>
+	// 										</div>
+	// 										<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); line-height: 20px; padding-top: 20px; text-align: center;">
+	// 											` + email.Body + `
+	// 										</div>
+	// 									</div>
+	// 									<div style="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; color: rgba(0, 0, 0, 0.54); font-size: 11px; line-height: 18px; padding-top: 12px; text-align: center;">
+	// 										` + email.Footer + `
+	// 									</div>
+	// 								</td>
+	// 								<td width="8" style="width: 8px;"></td>
+	// 							</tr>
+	// 						</tbody>
+	// 					</table>
+	// 				</td>
+	// 			</tr>
+	// 			<tr height="32" style="height: 32px;">
+	// 				<td></td>
+	// 			</tr>
+	// 		</tbody>
+	// 	</table>
+	// </div>`
+	// dataSend.Emails = email.Emails
+
+	switch email.Provider {
+	case "Resend":
 		if !handlers.SendResendMail(dataSend) {
 			log.Println("failed to send email")
 		}
-	} else if email.Provider == "SMTP" {
+	case "SMTP":
 		if !handlers.SendSMTPMail(dataSend) {
 			log.Println("failed to send email")
 		}

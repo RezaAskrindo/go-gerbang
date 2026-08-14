@@ -71,10 +71,10 @@ func MailTesting(c fiber.Ctx) error {
 	}
 
 	dataSend := &types.ListEmail{
-		Sender:           appName,
-		Subject:          "Testing Email!",
-		BodyTemplateText: "Testing email...",
-		BodyTemplateHtml: "<p>Testing email...</p>",
+		Sender:  appName,
+		Subject: "Testing Email!",
+		// BodyTemplateText: "Testing email...",
+		// BodyTemplateHtml: "<p>Testing email...</p>",
 		Emails: []types.Email{
 			{Name: "Test User", EmailAddr: to},
 		},
@@ -84,27 +84,57 @@ func MailTesting(c fiber.Ctx) error {
 	if tipe == "event" {
 		var sendToEvent types.SendingEmailToBroker
 		sendToEvent = types.SendingEmailToBroker{
-			Sender:   dataSend.Sender,
+			Sender:   appName,
 			Provider: provider,
-			Subject:  dataSend.Subject,
-			Title:    dataSend.Subject,
-			BodyText: dataSend.BodyTemplateText,
-			Body:     dataSend.BodyTemplateHtml,
-			Footer:   "",
-			Emails:   dataSend.Emails,
+			Subject:  "Testing Email!",
+			// Title:    dataSend.Subject,
+			// BodyText: dataSend.BodyTemplateText,
+			// Body:     dataSend.BodyTemplateHtml,
+			// Footer:   "",
+			Template: "testing-mail",
+			Data: map[string]any{
+				"title":   "Testing Email!",
+				"message": "Testing email...",
+			},
+			Emails: dataSend.Emails,
 		}
 		PublishEvent("user.notification", sendToEvent)
 		return handlers.SuccessResponse(c, true, "Send Mail On Event Success", nil, nil)
 	}
 
-	if provider == "Resend" {
+	// if provider == "Resend" {
+	// 	if !handlers.SendResendMail(dataSend) {
+	// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
+	// 	}
+	// } else if provider == "SMTP" && !handlers.SendSMTPMail(dataSend) {
+	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
+	// } else {
+	// 	return handlers.SuccessResponse(c, true, "Send Mail Not On Configuration", nil, nil)
+	// }
+
+	dataSend.BodyTemplateText = "Testing email..."
+
+	html, err := handlers.MailRenderer.Render("testing-mail",
+		map[string]any{
+			"Title":   "Testing Email!",
+			"Message": "Testing email...",
+			"Footer":  "Ini email otomatis",
+		})
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, err)
+	}
+
+	dataSend.BodyTemplateHtml = html
+
+	switch provider {
+	case "Resend":
 		if !handlers.SendResendMail(dataSend) {
-			return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed send"))
 		}
-	} else if provider == "SMTP" && !handlers.SendSMTPMail(dataSend) {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
-	} else {
-		return handlers.SuccessResponse(c, true, "Send Mail Not On Configuration", nil, nil)
+	case "SMTP":
+		if !handlers.SendSMTPMail(dataSend) {
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed send"))
+		}
 	}
 
 	return handlers.SuccessResponse(c, true, "Check Mail Success", nil, nil)
@@ -116,35 +146,42 @@ func QueueUserInformation(providerNotification string, querySender string, user 
 		Sender = querySender
 	}
 
-	textPass := ``
-	htmlPass := ``
-	if sendPass {
-		textPass = `password: ` + user.Password
-		htmlPass = `<div>password: <strong>` + user.Password + `</strong></div>`
-	}
+	// textPass := ``
+	// htmlPass := ``
+	// if sendPass {
+	// 	textPass = `password: ` + user.Password
+	// 	htmlPass = `<div>password: <strong>` + user.Password + `</strong></div>`
+	// }
 
 	sendEmail := new(types.SendingEmailToBroker)
 	sendEmail.Sender = Sender
 	sendEmail.Provider = providerNotification
 	sendEmail.Subject = "Create Account Success"
-	sendEmail.Title = "Akun Anda Berhasil Di Buat"
-	sendEmail.BodyText = `
-		Hi, ` + user.FullName + `, berikut informasi akun anda:
+	// sendEmail.Title = "Akun Anda Berhasil Di Buat"
+	// sendEmail.BodyText = `
+	// 	Hi, ` + user.FullName + `, berikut informasi akun anda:
 
-		username: ` + user.Username + `
-		email: ` + user.Email + textPass + `
+	// 	username: ` + user.Username + `
+	// 	email: ` + user.Email + textPass + `
 
-		Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.
-	`
-	sendEmail.Body = `
-		<div class="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); padding-top: 20px; text-align: center;">Hi, ` + user.FullName + `, berikut informasi akun anda:</div>
-		<br/>
-		<div>username: <strong>` + user.FullName + `</strong></div>
-		<div>email: <strong>` + user.Email + `</strong></div>` + htmlPass + `
-		<br/>
-		<div class="padding-top: 20px; font-size: 12px; line-height: 16px; color: rgb(95, 99, 104); letter-spacing: 0.3px; text-align: center;">Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</div>
-	`
-	sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
+	// 	Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.
+	// `
+	// sendEmail.Body = `
+	// 	<div class="font-family: Roboto-Regular, Helvetica, Arial, sans-serif; font-size: 14px; color: rgba(0, 0, 0, 0.87); padding-top: 20px; text-align: center;">Hi, ` + user.FullName + `, berikut informasi akun anda:</div>
+	// 	<br/>
+	// 	<div>username: <strong>` + user.FullName + `</strong></div>
+	// 	<div>email: <strong>` + user.Email + `</strong></div>` + htmlPass + `
+	// 	<br/>
+	// 	<div class="padding-top: 20px; font-size: 12px; line-height: 16px; color: rgb(95, 99, 104); letter-spacing: 0.3px; text-align: center;">Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</div>
+	// `
+	// sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
+	sendEmail.Data = map[string]any{
+		"name":     user.FullName,
+		"username": user.Username,
+		"email":    user.Email,
+		"password": user.Password,
+		"sender":   Sender,
+	}
 	sendEmail.Emails = []types.Email{
 		{
 			Name:      user.FullName,

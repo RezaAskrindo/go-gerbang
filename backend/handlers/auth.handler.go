@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/api/idtoken"
 )
 
 var TimeNow = time.Now()
@@ -89,14 +87,14 @@ func IsTOTPValid(token string) bool {
 }
 
 // GOOGLE VALIDATION SIGN IN
-func VerifyIdTokenGoogle(ctx context.Context, idToken string, audience string) (*idtoken.Payload, error) {
-	payload, err := idtoken.Validate(ctx, idToken, audience)
-	if err != nil {
-		return nil, err
-	}
+// func VerifyIdTokenGoogle(ctx context.Context, idToken string, audience string) (*idtoken.Payload, error) {
+// 	payload, err := idtoken.Validate(ctx, idToken, audience)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return payload, nil
-}
+// 	return payload, nil
+// }
 
 // SUPPORT FUNCTION
 func SendSafeUserData(user *models.User, randString string) models.UserData {

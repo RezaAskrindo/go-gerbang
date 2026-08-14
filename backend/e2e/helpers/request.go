@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 var ErrCSRF = errors.New("CSRF validation failed")
@@ -34,12 +36,13 @@ func doJSON(
 		return nil, nil, err
 	}
 
-	var buf bytes.Buffer
+	// var buf bytes.Buffer
+	buf := bytebufferpool.Get()
 	if body != nil {
-		_ = json.NewEncoder(&buf).Encode(body)
+		_ = json.NewEncoder(buf).Encode(body)
 	}
 
-	req, err := http.NewRequest(method, url, &buf)
+	req, err := http.NewRequest(method, url, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return nil, nil, err
 	}

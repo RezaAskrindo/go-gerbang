@@ -42,24 +42,34 @@ type Email struct {
 	EmailAddr string `json:"email_addr"`
 }
 
+type Attachment struct {
+	Name        string `json:"name"`
+	ContentType string `json:"content_type,omitempty"`
+	Data        []byte `json:"-"`
+}
+
 type ListEmail struct {
-	Sender           string  `json:"sender"`
-	Subject          string  `json:"subject"`
-	BodyTemplateText string  `json:"body_template_text"`
-	BodyTemplateHtml string  `json:"body_template_html"`
-	Emails           []Email `json:"emails"`
-	TypeBatchAddress string  `json:"type_batch_address"` // "all" or "single" default "single"
+	Sender           string       `json:"sender"`
+	Subject          string       `json:"subject"`
+	BodyTemplateText string       `json:"body_template_text"`
+	BodyTemplateHtml string       `json:"body_template_html"`
+	Emails           []Email      `json:"emails"`
+	Attachments      []Attachment `json:"attachments,omitempty"`
+	TypeBatchAddress string       `json:"type_batch_address"` // "all" or "single" default "single"
 }
 
 type SendingEmailToBroker struct {
-	Sender   string  `json:"sender"`
-	Provider string  `json:"provider"`
-	Subject  string  `json:"subject"`
-	Title    string  `json:"title"`
-	BodyText string  `json:"bodyText"`
-	Body     string  `json:"body"`
-	Footer   string  `json:"footer"`
-	Emails   []Email `json:"emails"`
+	Sender   string `json:"sender"`
+	Provider string `json:"provider"`
+	Subject  string `json:"subject"`
+	// Title    string  `json:"title"`
+	// BodyText string  `json:"bodyText"`
+	// Body     string  `json:"body"`
+	// Footer   string  `json:"footer"`
+	Template string
+	Data     map[string]any
+	// Data   json.RawMessage
+	Emails []Email `json:"emails"`
 }
 
 type ResendKey struct {

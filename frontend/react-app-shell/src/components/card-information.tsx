@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ComponentType } from "react"
 import { Filter, FilterX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ type TCardInformationProps = {
   columnsDetail?: any[]
   /* eslint-disable @typescript-eslint/no-explicit-any */
   data?: any[]
+  Content?: ComponentType
 }
 
 export default function CardInformation({
@@ -29,6 +30,7 @@ export default function CardInformation({
   rowIdKey,
   columnsDetail,
   data,
+  Content
 }: TCardInformationProps) {
   const [openFilter, setOpenFilter] = useState(false)
 
@@ -45,6 +47,7 @@ export default function CardInformation({
       </CardHeader>
       <CardContent>
         {rowIdKey && columnsDetail && data && <DataTable rowIdKey={rowIdKey} columns={columnsDetail} data={data} useFilter={openFilter} />}
+        {Content ? <Content /> : null}
       </CardContent>
     </Card>
   )

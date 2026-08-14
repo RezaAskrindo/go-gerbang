@@ -23,7 +23,7 @@ func AuthRoutes(app *fiber.App) {
 	auth.Get("/logout", services.LogoutWeb)
 	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
 	auth.Post("/refresh-token", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RefreshAuth)
-	auth.Post("/login-with-google", middleware.ValidateCaptcha, middleware.CsrfProtection, services.LoginWithGoogle)
+	// auth.Post("/login-with-google", middleware.ValidateCaptcha, middleware.CsrfProtection, services.LoginWithGoogle)
 	auth.Post("/request-reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RequestResetPassword)
 	auth.Post("/reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ResetPassword)
 	auth.Post("/change-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ChangePassword)

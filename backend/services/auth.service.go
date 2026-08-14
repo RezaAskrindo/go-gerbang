@@ -178,26 +178,27 @@ func Login(c fiber.Ctx) error {
 		if domain == "" {
 			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
 		} else {
-			c.Cookie(&fiber.Cookie{
-				Name:     middleware.CookieRefreshJWT,
-				Value:    refreshToken,
-				HTTPOnly: true,
-				Secure:   config.SecureCookies,
-				SameSite: "Strict",
-				Expires:  time.Now().Add(config.RefreshAuthTimeCache),
-				Domain:   domain,
-			})
+			middleware.SetAuthCookies(c, domain, refreshToken, token)
+			// c.Cookie(&fiber.Cookie{
+			// 	Name:     middleware.CookieRefreshJWT,
+			// 	Value:    refreshToken,
+			// 	HTTPOnly: true,
+			// 	Secure:   config.SecureCookies,
+			// 	SameSite: "Strict",
+			// 	Expires:  time.Now().Add(config.RefreshAuthTimeCache),
+			// 	Domain:   domain,
+			// })
 
-			cookie := new(fiber.Cookie)
-			cookie.Name = middleware.CookieJWT
-			cookie.Value = "Bearer " + token
-			cookie.Expires = time.Now().Add(config.AuthTimeCache)
-			cookie.HTTPOnly = true
-			cookie.Domain = domain
-			cookie.Secure = config.SecureCookies
-			cookie.SameSite = config.CookieSameSite
-			cookie.SessionOnly = false
-			c.Cookie(cookie)
+			// cookie := new(fiber.Cookie)
+			// cookie.Name = middleware.CookieJWT
+			// cookie.Value = "Bearer " + token
+			// cookie.Expires = time.Now().Add(config.AuthTimeCache)
+			// cookie.HTTPOnly = true
+			// cookie.Domain = domain
+			// cookie.Secure = config.SecureCookies
+			// cookie.SameSite = config.CookieSameSite
+			// cookie.SessionOnly = false
+			// c.Cookie(cookie)
 
 			return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user_data, nil)
 		}
@@ -290,27 +291,27 @@ func RequestResetPassword(c fiber.Ctx) error {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base baseUrl params"))
 	}
 
-	rawQuery := c.RequestCtx().URI().QueryString()
-	queryStr := string(rawQuery)
+	// rawQuery := c.RequestCtx().URI().QueryString()
+	// queryStr := string(rawQuery)
 
 	sendEmail := new(types.SendingEmailToBroker)
 	sendEmail.Sender = Sender
 	sendEmail.Subject = "Reset Password"
-	sendEmail.Title = "You are request for reset password"
-	sendEmail.BodyText = `Hi ` + user.FullName + `
-	
-	for reset password please click link below:
-		
-	` + BaseUrl + `/auth/forget-password?token=` + randomReset + `
+	// sendEmail.Title = "You are request for reset password"
+	// sendEmail.BodyText = `Hi ` + user.FullName + `
 
-	this link only active in 24 hours`
-	sendEmail.Body = `Hi ` + user.FullName + `<br/> 
-		for reset password please click link below:
-		<div style="padding-top:30px;padding-bottom:28px;text-align:center">
-			<a href='` + BaseUrl + `/auth/forget-password?token=` + randomReset + `&` + queryStr + `' style="font-family:'Google Sans',Roboto,RobotoDraft,Helvetica,Arial,sans-serif;line-height:16px;color:#ffffff;font-weight:400;text-decoration:none;font-size:14px;display:inline-block;padding:10px 24px;background-color:#171717;border-radius:5px;min-width:90px">Reset Link</a>
-		</div>
-		this link only active in 24 hours`
-	sendEmail.Footer = "you are receiving this mail from " + Sender
+	// for reset password please click link below:
+
+	// ` + BaseUrl + `/auth/forget-password?token=` + randomReset + `
+
+	// this link only active in 24 hours`
+	// sendEmail.Body = `Hi ` + user.FullName + `<br/>
+	// 	for reset password please click link below:
+	// 	<div style="padding-top:30px;padding-bottom:28px;text-align:center">
+	// 		<a href='` + BaseUrl + `/auth/forget-password?token=` + randomReset + `&` + queryStr + `' style="font-family:'Google Sans',Roboto,RobotoDraft,Helvetica,Arial,sans-serif;line-height:16px;color:#ffffff;font-weight:400;text-decoration:none;font-size:14px;display:inline-block;padding:10px 24px;background-color:#171717;border-radius:5px;min-width:90px">Reset Link</a>
+	// 	</div>
+	// 	this link only active in 24 hours`
+	// sendEmail.Footer = "you are receiving this mail from " + Sender
 	sendEmail.Emails = []types.Email{
 		{
 			Name:      user.FullName,

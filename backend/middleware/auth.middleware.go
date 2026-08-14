@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -8,26 +9,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3/extractors"
-
 	"go-gerbang/config"
 	"go-gerbang/database"
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 
-	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
+	_ "github.com/jackc/pgx/v5"
+
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/steambap/captcha"
-	_ "gorm.io/driver/postgres"
 )
 
-func initializeStorage() (storage fiber.Storage) {
+func initializeStorage(db int) (storage fiber.Storage) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Redis connection failed: %v\n", r)
@@ -47,15 +48,24 @@ func initializeStorage() (storage fiber.Storage) {
 	}
 	// Try to initialize Redis
 	storage = redis.New(redis.Config{
+		Database: db,
 		Host:     host,
 		Port:     port,
 		Password: config.Config("REDIS_PASSWORD"),
+		PoolSize: 5,
 	})
+
+	rdb := storage.(*redis.Storage) // if the package exposes the underlying client/ping
+	if err := rdb.Conn().Ping(context.Background()).Err(); err != nil {
+		panic(err)
+	}
 
 	return storage
 }
 
-var StorageRedisFiber fiber.Storage = initializeStorage()
+var StorageRedisFiber fiber.Storage = initializeStorage(0)
+var StorageIdempotency fiber.Storage = initializeStorage(1)
+var StorageLimiter fiber.Storage = initializeStorage(2)
 
 const (
 	UserId           = "userId"
@@ -91,7 +101,7 @@ var CsrfProtection = csrf.New(csrf.Config{
 	},
 	// TODO: migrate KeyLookup: "header:" + CsrfHeaderName
 	CookieName:        "csrf_header",
-	CookieSameSite:    "Lax",
+	CookieSameSite:    config.CookieSameSite,
 	CookieSecure:      config.SecureCookies,
 	CookieHTTPOnly:    false,
 	CookieSessionOnly: true,
@@ -125,7 +135,7 @@ var CsrfStore = session.NewStore(session.Config{
 	Extractor:      extractors.FromCookie("__SGCsrfSession"), // Recommended to use the __Host- prefix when serving the app over TLS
 	CookieSecure:   config.SecureCookies,
 	CookieHTTPOnly: true,
-	CookieSameSite: "Lax",
+	CookieSameSite: config.CookieSameSite,
 })
 
 var CsrfProtectionCookies = csrf.New(csrf.Config{
@@ -136,7 +146,7 @@ var CsrfProtectionCookies = csrf.New(csrf.Config{
 	// TODO: migrate KeyLookup: cookie:__SGCsrf
 	CookieName:     "__SGCsrf",
 	CookieHTTPOnly: false,
-	CookieSameSite: "Lax",
+	CookieSameSite: config.CookieSameSite,
 	IdleTimeout:    config.CsrfTimeCache,
 	ErrorHandler: func(c fiber.Ctx, err error) error {
 		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF Token is invalid"))
@@ -349,7 +359,7 @@ func SaveUserSession(c fiber.Ctx, user models.UserData, single_login bool) error
 
 	if single_login {
 		user_auth_by_id := fmt.Sprintf("%s-%s", UserActive, user.IdAccount)
-		handlers.SaveToRedis(user_auth_by_id, user.AuthKey)
+		_ = handlers.SaveToRedis(user_auth_by_id, user.AuthKey)
 	}
 
 	return nil

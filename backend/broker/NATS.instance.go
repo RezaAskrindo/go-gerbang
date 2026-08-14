@@ -15,6 +15,11 @@ func StartingNatsServer() (*server.Server, error) {
 	natsServer, err := server.NewServer(&server.Options{
 		Host: "0.0.0.0",
 		Port: 9001,
+		// For Low VPS
+		MaxConn:       20,
+		MaxPayload:    64 * 1024, // 64 kb
+		MaxPending:    2 * 1024 * 1024,
+		WriteDeadline: 5 * time.Second,
 	})
 	if err != nil {
 		log.Printf("failed to create NATS server: %v", err)

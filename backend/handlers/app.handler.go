@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"net/url"
 	"os"
@@ -23,7 +24,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func ParseBody(c fiber.Ctx, body interface{}) error {
+func ParseBody(c fiber.Ctx, body any) error {
 	if err := c.Bind().Body(body); err != nil {
 		return BadRequestErrorResponse(c, fmt.Errorf("failed To Parse Body"))
 	}
@@ -31,8 +32,8 @@ func ParseBody(c fiber.Ctx, body interface{}) error {
 	return nil
 }
 
-func StructToMap(item interface{}) map[string]interface{} {
-	res := map[string]interface{}{}
+func StructToMap(item any) map[string]any {
+	res := map[string]any{}
 	if item == nil {
 		return res
 	}
@@ -190,19 +191,19 @@ func SaveConfig(filename string, config *types.ConfigServices) error {
 
 // Response
 type SuccessStruct struct {
-	Status  bool        `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-	Total   *int64      `json:"total"`
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+	Total   *int64 `json:"total"`
 }
 
 type ErrorStruct struct {
-	Message interface{} `json:"message"`
-	Status  bool        `json:"status"`
-	Code    int         `json:"code"`
+	Message any  `json:"message"`
+	Status  bool `json:"status"`
+	Code    int  `json:"code"`
 }
 
-func SuccessResponse(c fiber.Ctx, status bool, message string, data interface{}, total *int64) error {
+func SuccessResponse(c fiber.Ctx, status bool, message string, data any, total *int64) error {
 	return c.Status(fiber.StatusOK).JSON(&SuccessStruct{
 		Status:  status,
 		Message: message,
@@ -269,8 +270,8 @@ func NotFoundErrorResponse(c fiber.Ctx, err error) error {
 
 var validate = validator.New()
 
-func ValidateStruct(data interface{}) map[string]map[string]interface{} {
-	errors := make(map[string]map[string]interface{})
+func ValidateStruct(data any) map[string]map[string]any {
+	errors := make(map[string]map[string]any)
 
 	tagDescriptionValidation := map[string]string{
 		"required": "Tidak Boleh Kosong",
@@ -280,7 +281,7 @@ func ValidateStruct(data interface{}) map[string]map[string]interface{} {
 	err := validate.Struct(data)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
-			errors[LowerFirstCase(err.StructField())] = map[string]interface{}{
+			errors[LowerFirstCase(err.StructField())] = map[string]any{
 				"invalid": true,
 				"desc":    tagDescriptionValidation[err.Tag()],
 				"descRaw": err.Tag(),
@@ -357,7 +358,7 @@ func ExecuteScript(scriptPath, workDir string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Log error (you can send to your logging service)
-		fmt.Printf("Script execution error: %v\nOutput: %s\n", err, string(output))
+		log.Printf("Script execution error: %v\nOutput: %s\n", err, string(output))
 		return err
 	}
 

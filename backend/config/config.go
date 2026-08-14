@@ -35,20 +35,16 @@ var AuthTimeCache = 1 * time.Hour
 var RefreshAuthTimeCache = 24 * 14 * time.Hour
 var CsrfTimeCache = 1 * time.Second
 
-var RedisTimeCache = 12 * time.Hour
-
 var SecretKey = Config("SECRET_KEY_APIGATEWAY")
 var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 
-// var SecureCookies bool
-var SecureCookiesString = Config("SECURE_COOKIES")
-var CookieSameSite = Config("COOKIES_SAME_SITE")
-
 // DEV
+var CookieSameSite = "Lax"
 var SecureCookies = false //change true to prod false to dev
 
 // PROD
-// var SecureCookies = true    //change true to prod false to dev
+// var CookieSameSite = "None"
+// var SecureCookies = true //change true to prod false to dev
 
 // SIKA REPOSITORY
 // var SikaRepoURL = Config("SIKA_REPO_URL")

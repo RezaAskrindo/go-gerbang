@@ -1,5 +1,6 @@
 const env = import.meta.env;
-export const BackendUrlBase = env.DEV ? "http://localhost:9000" : window.location.origin;
+// export const BackendUrlBase = env.DEV ? "http://localhost:9000" : window.location.origin;
+export const BackendUrlBase = env.DEV ? "/backend" : window.location.origin;
 // export const BackendUrlBase = "http://localhost:9000";
 // export const BackendUrlBase = "/backend";
 
@@ -45,6 +46,10 @@ export async function LoginUser(form:{ identity: string; password: string }, dom
   return data;
 }
 
-export function LogoutUser() {
-  window.location.href = `${BackendUrlBase}/api/v1/auth/logout?redirectUrl=${FrontendUrl}`
+export function LogoutUser(domain?: string) {
+  let urlLogout = `${BackendUrlBase}/api/v1/auth/logout?redirectUrl=${FrontendUrl}`
+  if (domain) {
+    urlLogout += `&domain=${domain}`
+  }
+  window.location.href = urlLogout;
 }

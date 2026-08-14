@@ -1,11 +1,26 @@
 import { useEffect, useState, startTransition } from "react";
 import useSWR from "swr";
 
-import Highcharts from 'highcharts';
+// import Highcharts from 'highcharts';
 // import "highcharts/css/highcharts.css"
-import 'highcharts/themes/adaptive';
+// import 'highcharts/themes/adaptive';
 
-Highcharts.setOptions({
+import { Chart, type ChartOptions, Palette } from '@highcharts/react';
+import { Area } from '@highcharts/react/series';
+
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+import { BackendUrlBase } from "@/services/baseService";
+import { SWRDashboardConfig } from "@/services/use-swr-service";
+
+// Highcharts.setOptions({
+const highchartsOptions: ChartOptions = {
   xAxis: {
     type: "datetime"
   },
@@ -27,21 +42,7 @@ Highcharts.setOptions({
   legend: {
     enabled: false
   }
-});
-
-import { Chart, setHighcharts } from '@highcharts/react';
-import { Area } from '@highcharts/react/series';
-
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-
-import { BackendUrlBase } from "@/services/baseService";
-import { SWRDashboardConfig } from "@/services/use-swr-service";
+};
 
 const MAX_POINTS = 100;
 
@@ -63,7 +64,7 @@ function limitData(data: any): any {
 }
 
 export default function MetricsInfo() {
-  setHighcharts(Highcharts);
+  // setHighcharts(Highcharts);
 
   const [cpuSeries, setCpuSeries] = useState<[number, number][]>([]);
   const [ramSeries, setRamSeries] = useState<{name: string, data: [number, number][]}[]>([
@@ -126,12 +127,24 @@ export default function MetricsInfo() {
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Memory Usage</CardDescription>
-          <CardTitle className="text-2xl font-bold tabular-nums @[250px]/card:text-3xl">
+          <CardTitle className="text-2xl font-bold tabular-nums @[250px]/card:text-2xl truncate">
             {formatBytes(metricsData?.pid?.ram)} <span className="border-s ps-1 text-sm font-semibold text-orange-400">{formatBytes(metricsData?.os?.ram)}</span> <span className="border-s ps-1 text-sm font-semibold text-red-500">{formatBytes(metricsData?.os?.total_ram)}</span>
           </CardTitle>
         </CardHeader>
-        <CardFooter className="px-0 min-h-48">
-          <Chart title="">
+        <CardFooter className="px-0 min-h-48 w-full">
+          <Chart title="" options={highchartsOptions}>
+            <Palette
+              light={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+              dark={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+            />
             <Area.Series data={ramSeries[0].data} />
             <Area.Series data={ramSeries[1].data} />
             <Area.Series data={ramSeries[2].data} />
@@ -146,7 +159,19 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart title="">
+          <Chart title="" options={highchartsOptions}>
+            <Palette
+              light={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+              dark={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+            />
             <Area.Series data={cpuSeries} />
           </Chart>
         </CardFooter>
@@ -159,7 +184,19 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart title="">
+          <Chart title="" options={highchartsOptions}>
+            <Palette
+              light={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+              dark={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+            />
             <Area.Series data={rtimeSeries} />
           </Chart>
         </CardFooter>
@@ -172,7 +209,19 @@ export default function MetricsInfo() {
           </CardTitle>
         </CardHeader>
         <CardFooter className="px-0">
-          <Chart title="">
+          <Chart title="" options={highchartsOptions}>
+            <Palette
+              light={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+              dark={{
+                backgroundColor: "var(--background)",
+                neutralColor: "var(--foreground)",
+                highlightColor: "var(--primary)",
+              }}
+            />
             <Area.Series data={connsSeries} />
           </Chart>
         </CardFooter>

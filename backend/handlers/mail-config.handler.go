@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"html/template"
 	"regexp"
 	"strconv"
 	"sync"
@@ -8,6 +10,8 @@ import (
 
 	"go-gerbang/models"
 	"go-gerbang/types"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 var (
@@ -34,40 +38,6 @@ func IsValidEmail(email string) bool {
 
 	return re.MatchString(email)
 }
-
-// func GetEmailServiceName() map[string]interface{} {
-// 	mailMutex.RLock()
-// 	if time.Since(emailServiceNameLastRefresh) < cacheTTL && len(emailServiceName) > 0 {
-// 		result := make(map[string]interface{}, len(emailServiceName))
-// 		for k, v := range emailServiceName {
-// 			result[k] = v
-// 		}
-// 		mailMutex.RUnlock()
-// 		return result
-// 	}
-// 	mailMutex.RUnlock()
-
-// 	d := &[]models.Configuration{}
-// 	err := models.FindConfiguration(d, "configuration_group = ?", "EMAIL_SERVICE_NAME").Error
-// 	if err != nil {
-// 		return nil
-// 	}
-
-// 	config := models.ParseConfiguration(d)
-
-// 	mailMutex.Lock()
-// 	if configMap, ok := config.(map[string]struct{}); ok {
-// 		emailServiceName = configMap
-// 	}
-// 	emailServiceNameLastRefresh = time.Now()
-// 	result := make(map[string]interface{}, len(emailServiceName))
-// 	for k, v := range emailServiceName {
-// 		result[k] = v
-// 	}
-// 	mailMutex.Unlock()
-
-// 	return result
-// }
 
 func GetEmailSendApi() string {
 	mailMutex.RLock()
@@ -187,4 +157,52 @@ func GetEmailSMTPConfig() []types.SMTPConfig {
 	mailMutex.Unlock()
 
 	return result
+}
+
+type Renderer struct {
+	Templates map[string]*template.Template
+}
+
+var MailRenderer = NewRenderer()
+
+func NewRenderer() *Renderer {
+	r := &Renderer{
+		Templates: map[string]*template.Template{},
+	}
+
+	r.load("testing-mail")
+	r.load("user_created")
+
+	return r
+}
+
+func (r *Renderer) load(name string) {
+	t := template.Must(template.ParseFiles(
+		"mail-templates/layout.html",
+		"mail-templates/"+name+".html",
+	))
+
+	fmt.Println("Loaded templates:")
+
+	for k := range r.Templates {
+		fmt.Println("-", k)
+	}
+
+	r.Templates[name] = t
+}
+
+func (r *Renderer) Render(name string, data any) (string, error) {
+	tmpl, ok := r.Templates[name]
+	if !ok {
+		return "", fmt.Errorf("template %s not found", name)
+	}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	if err := tmpl.Execute(buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }

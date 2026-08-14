@@ -1,6 +1,6 @@
 import path from "path"
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import react from '@vitejs/plugin-react'
 import tailwindcss from "@tailwindcss/vite"
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 import federation from '@originjs/vite-plugin-federation'
@@ -9,7 +9,9 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    cssInjectedByJsPlugin(),
+    cssInjectedByJsPlugin({
+      relativeCSSInjection: true 
+    }),
     federation({
       name: 'app-shell',
       filename: 'remoteEntry.js',
@@ -30,17 +32,20 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    // proxy: {
-    //   '/backend': {
-    //     target: 'http://localhost:9000',
-    //     // target: 'https://gateway.siskor.web.id',
-    //     changeOrigin: true,
-    //     rewrite: (path: string) => path.replace(/^\/backend/, ''),
-    //   },
-    // },
+    proxy: {
+      '/backend': {
+        target: 'http://localhost:9000',
+        // target: 'https://gateway.siskor.web.id',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/backend/, ''),
+      },
+    },
   },
   // base: 'http://localhost:2001',
   preview: {
     port: 2001,
   },
+  build: {
+    cssCodeSplit: true 
+  }
 })

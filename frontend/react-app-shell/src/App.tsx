@@ -54,21 +54,22 @@ import {
 import Placeholder from "@/assets/placeholder.svg";
 import LogoReact from "@/assets/react.svg";
 
-import NotFound from "./components/go-gerbang/not-found";
+import NotFound from "@/components/go-gerbang/not-found";
 // import ResetPasswordForm from "./components/go-gerbang/reset-password-form";
 
 import {
   LoginUser,
   LogoutUser,
-} from "./services/baseService";
+} from "@/services/baseService";
 import { 
   CheckMigration, 
   GetAuthSession 
-} from "./services/use-swr-service";
+} from "@/services/use-swr-service";
 
 import AppLogin from "@/components/app-login";
-import AppBeginning from "./components/go-gerbang/app-beginning";
-import { useHash } from "./hooks/use-hash";
+import AppBeginning from "@/components/go-gerbang/app-beginning";
+
+import { useHash } from "@/hooks/use-hash";
 
 const AppShell = lazy(() => import("@/components/app-shell"));
 const Dashboard = lazy(() => import("@/components/go-gerbang/dashboard"));
@@ -107,7 +108,8 @@ const NavMain = () => {
       items: [
         {title: "caddy", url: "#/caddy"},
         {title: "log", url: "#/log"},
-        {title: "module", url: "#/module"},
+        {title: "module backend", url: "#/module-backend"},
+        {title: "module frontend", url: "#/module-frontend"},
         {title: "notification", url: "#/notification"},
         {title: "user", url: "#/user"},
         // {title: "rbac", url: "#/rbac"},
@@ -160,6 +162,12 @@ const NavUser = () => {
   
   const { user } = useAuth();
 
+  const logoutHandle = () => {
+    const domain = window.location.hostname;
+    console.log(domain);
+    LogoutUser(domain);
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -206,7 +214,7 @@ const NavUser = () => {
               </DropdownMenuItem>
             </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={LogoutUser}>
+            <DropdownMenuItem onClick={logoutHandle}>
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -227,7 +235,8 @@ const routes: Record<string, React.ComponentType> = {
   "/": Dashboard,
   "/caddy": CaddyManagement,
   "/log": LogManagement,
-  "/module": ModuleManagement,
+  "/module-backend": ModuleManagement,
+  "/module-frontend": ModuleManagement,
   "/notification": NotificationManagement,
   "/rbac": RbacManagement,
   "/user": UserManagement,
@@ -246,7 +255,7 @@ function AppRouter(): ReactNode {
 function BreadcrumbCom() {
   const hash = useHash();
 
-  const hashMenu = hash.replace(/#\//g, '').replace(/^\w/, c => c.toUpperCase());
+  const hashMenu = hash.replace(/#\//g, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
     <Breadcrumb>
@@ -267,11 +276,12 @@ function BreadcrumbCom() {
 
 function App() {
   const loginSend = async (valuez:{ identity: string; password: string }) => {
+    const domain = window.location.hostname;
     toast.promise(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      LoginUser(valuez).catch(async (err: any) => {
+      LoginUser(valuez, domain).catch(async (err: any) => {
         if (err.message === "CSRF validation failed") {
-          const retryData = await LoginUser(valuez);
+          const retryData = await LoginUser(valuez, domain);
           return retryData;
         }
         throw err;

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Ban, Check, EllipsisVertical, Files, Loader, Plus, Save, X } from "lucide-react";
+import { lazy, useEffect, useState } from "react";
+import { Ban, Check, CheckCircle, EllipsisVertical, Files, Loader, Plus, Save, X } from "lucide-react";
 import { useDropzone, type FileWithPath } from 'react-dropzone';  
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { cn } from "@/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
+import useSWR from "swr";
 
 import {
   AlertDialog,
@@ -51,7 +52,10 @@ import { fetchSWR, useConfiguration, useDeleteConfiguration } from "@/services/u
 
 import CardInformation from "@/components/card-information";
 import SheetForm from "@/components/sheet-form";
-import useSWR from "swr";
+import { useHash } from "@/hooks/use-hash";
+import { Switch } from "@/components/ui/switch";
+
+const CodeHighlighter = lazy(() => import("@/components/CodeHighlighter"));
 
 type TDetailModule = {
   module_name: string
@@ -60,6 +64,8 @@ type TDetailModule = {
   execution?: string
   desist?: string
   url?: string
+  use_s3?: boolean
+  s3_config?: string
 }
 
 const formSchema = z.object({
@@ -69,6 +75,7 @@ const formSchema = z.object({
   execution: z.string().optional(),
   desist: z.string().optional(),
   url: z.string().optional(),
+  use_s3: z.boolean().optional(),
 })
 
 function FormModule({
@@ -76,19 +83,25 @@ function FormModule({
   setOpenDialog,
   indexData=0,
   data,
+  moduleType
 }: {
   openDialog: boolean
   setOpenDialog: (v: boolean) => void
   indexData?: number
   data?: TDetailModule
+  moduleType?: string
 }) {
+  console.log(indexData)
+  const [loading, setLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      module_type: "",
+      module_type: moduleType ?? "",
       module_name: "",
       location: "",
       execution: "",
+      use_s3: false,
     },
   });
 
@@ -110,6 +123,7 @@ function FormModule({
       if (data.execution) form.setValue("execution", data.execution);
       if (data.desist) form.setValue("desist", data.desist);
       if (data.url) form.setValue("url", data.url);
+      if (data.s3_config) form.setValue("use_s3", true);
     } else {
       form.reset();
       setDroppedFiles([]);
@@ -139,6 +153,12 @@ function FormModule({
     if (data && values.module_name) {
       await useDeleteConfiguration("MODULE_CONFIG", values.module_name);
     }
+
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
     
     let payload = [
       {
@@ -166,6 +186,32 @@ function FormModule({
         configurationIndex: indexData,
       },
     ];
+
+    let encodedConfig: string | null = null;
+    if (values.use_s3) {
+      const config = {
+        access_key: "K5C9MOVDVOJMJ1ZMCIKH",
+        secret_key: "S02M0rtfIyFnJESZrTOoaGw4gmwRxDOIboQg4N6Z",
+        region: "us-east-1",
+        endpoint: "s3.nevaobjects.id",
+        bucket: "mfe",
+      };
+
+      const bytes = new TextEncoder().encode(JSON.stringify(config));
+
+      encodedConfig = btoa(String.fromCharCode(...bytes));
+
+      payload = payload.concat([
+        {
+          idConfiguration: undefined,
+          configurationGroup: "MODULE_CONFIG",
+          configurationName: values.module_name,
+          configurationKey: "s3_config",
+          configurationValue: encodedConfig,
+          configurationIndex: indexData,
+        }
+      ])
+    }
 
     if (values.execution && values.desist && values.url) {
       payload = payload.concat([
@@ -209,6 +255,9 @@ function FormModule({
 
     if (response.status && droppedFiles.length) {
       const uploadData = new FormData();
+      if (values.use_s3 && encodedConfig) {
+        uploadData.append("s3_config", encodedConfig);
+      }
       uploadData.append("file-location", values.location); // don't change file-location
       droppedFiles.forEach(file => {
         uploadData.append("files", file, file.relativePath || file.name);
@@ -232,7 +281,8 @@ function FormModule({
         alert("Upload failed: " + errorMessage);
       }
     }
-
+    
+    setLoading(false);
     setOpenDialog(false);
   }
 
@@ -263,6 +313,19 @@ function FormModule({
                 </FormItem>
               )}
             />
+            {module_type === "Frontend" && <FormField
+              control={form.control}
+              name="use_s3"
+              render={({ field }) => (
+                <FormItem className="flex flex-row justify-between">
+                  <FormLabel>S3 Object?</FormLabel>
+                  <FormControl>
+                    <Switch name={field.name} checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />}
             <FormField
               control={form.control}
               name="module_name"
@@ -353,9 +416,9 @@ function FormModule({
                 Close
               </Button>
             </SheetClose>
-            <Button className="flex-1" type="submit">
+            <Button className="flex-1" type={loading ? "button" : "submit"} disabled={loading}>
               <Save />
-              Save
+              {loading ? "Loading..." : "Save" }
             </Button>
           </div>
 
@@ -365,22 +428,89 @@ function FormModule({
   )
 }
 
+function ContentBackendGuide() {
+  return (
+    <div>
+      <h2 className="font-bold mb-2">Petunjuk Untuk Backend Module:</h2>
+      <ol className="text-sm list-decimal flex flex-col gap-2 ms-5">
+        <li>
+          <span className="font-semibold underline">Module Name</span> berisikan nama Module yang akan di buat.
+        </li>
+        <li>
+          <span className="font-semibold underline">Location</span> berisikan full-path folder dimana Module akan di upload.
+        </li>
+        <li>
+          <span className="font-semibold underline">File Exec Name</span> berisikan Module akan di jalankan / execute (windows: .exe, linux: no ext).
+        </li>
+        <li>
+          <span className="font-semibold underline">File Desist Name</span> berisikan file running script (.sh) untuk menjalankan File Exec di atas. Seperti running_script.sh, berikut contoh script yang digunakan.
+          <pre className="no-scrollbar min-w-0 overflow-x-auto outline-none has-data-highlighted-line:px-0 has-data-line-numbers:px-0 has-data-[slot=tabs]:p-0">
+            <CodeHighlighter lang="sh" code={`
+#!/bin/bash
+
+pkill -f go-service
+sleep 2
+
+BIN="/full/path/go-service"
+
+if [ ! -x "$BIN" ]; then
+  echo "Error: binary '$BIN' not found or not executable."
+  exit 1
+fi
+
+export PORT=8080
+export DATABASE_URL="postgres://dbUser:dbPass@localhost:5432/dbName?sslmode=disable"
+export ORIGINS="http://localhost:3000"
+
+"$BIN" & disown
+
+echo "go-service restarted successfully."
+              `} />
+          </pre>
+        </li>
+        <li>
+          <span className="font-semibold underline">URL for status</span> berisikan url path dengan port untuk melakukan test kepada service tersebut. Seperti http://localhost:8080.
+        </li>
+        <li>
+          <span className="font-semibold underline">Module File</span> berisikan file-file yang di upload ke folder, minimal file exec dan file desist.
+        </li>
+      </ol>
+    </div>
+  )
+}
+
+
+function ContentFrontendGuide() {
+  return (
+    <div>
+      <h2 className="font-bold mb-2">Petunjuk Untuk Frontend Module:</h2>
+      <ol className="text-sm list-decimal flex flex-col gap-2 ms-5">
+        <li>
+          <span className="font-semibold underline">S3 Object</span> jika iya, maka akan di upload ke S3 Server. Jika tidak maka akan di upload ke local.
+        </li>
+        <li>
+          <span className="font-semibold underline">Module Name</span> berisikan nama Module yang akan di buat.
+        </li>
+        <li>
+          <span className="font-semibold underline">Location</span> tergantung apakah menggunakan S3 object atau tidak? jika iya, maka cukup folder nya saja, apabila tidak maka harus full path.
+        </li>
+      </ol>
+    </div>
+  )
+}
+
 export default function ModuleManagement() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openAlert, setOpenAlert] = useState(false);
   const [dataForm, setDataFrom] = useState<TDetailModule>();
 
+  const hash = useHash();
+  const hashMenu = hash.replace(/#\//g, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).split(" ");
+  const getModule = hashMenu?.[1] ?? "backend";
+
   const { data: moduleConfig, mutate } = useConfiguration("MODULE_CONFIG");
 
-  const backendModule = useMemo(
-    () => moduleConfig?.data?.filter((el: TDetailModule) => el.module_type === "Backend"),
-    [moduleConfig]
-  );
-
-  const frontendModule = useMemo(
-    () => moduleConfig?.data?.filter((el: TDetailModule) => el.module_type === "Frontend"),
-    [moduleConfig]
-  );
+  const filterModule = moduleConfig?.data?.filter((el: TDetailModule) => el.module_type === getModule);
 
   useEffect(() => {
     if (!openDialog) {
@@ -419,14 +549,6 @@ export default function ModuleManagement() {
       accessorKey: "location",
       header: "Location",
     },
-    // {
-    //   accessorKey: "execution",
-    //   header: "Execution",
-    // },
-    // {
-    //   accessorKey: "desist",
-    //   header: "Desist",
-    // },
     {
       accessorKey: "url",
       header: "Status",
@@ -436,7 +558,7 @@ export default function ModuleManagement() {
           revalidateOnFocus: true
         });
         if (isLoading) return <div><Loader /></div>
-        else if (data.data) return <div><Check className="text-green-500" /></div>
+        else if (data.data) return <div><Check className="text-green-500 size-5" /></div>
         else return <div><X className="text-red-600" /></div>
       }
     },
@@ -460,8 +582,8 @@ export default function ModuleManagement() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
               <DropdownMenuItem onClick={() => {setOpenDialog(true);setDataFrom(module)}}>Edit</DropdownMenuItem>
-              {module.execution && <DropdownMenuItem onClick={() => RunScript(module.location, module.execution as string)}>Start</DropdownMenuItem>}
-              {module.desist && <DropdownMenuItem onClick={() => RunScript(module.location, module.desist as string)}>Stop</DropdownMenuItem>}
+              {/* {module.execution && <DropdownMenuItem onClick={() => RunScript(module.location, module.execution as string)}>Start</DropdownMenuItem>} */}
+              {module.desist && <DropdownMenuItem onClick={() => RunScript(module.location, module.desist as string)}>Restart</DropdownMenuItem>}
               <DropdownMenuSeparator />          
               <DropdownMenuItem onClick={() => {setOpenAlert(true);setDataFrom(module)}} variant="destructive">
                 Delete
@@ -481,6 +603,13 @@ export default function ModuleManagement() {
     {
       accessorKey: "location",
       header: "Location",
+    },
+    {
+      accessorKey: "s3_config",
+      header: "S3 Object",
+      cell: ({ row }) => {
+        return row.original.s3_config ? <CheckCircle className="text-green-500 size-5" /> : null;
+      }
     },
     {
       accessorKey: "id",
@@ -519,32 +648,41 @@ export default function ModuleManagement() {
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-semibold tracking-tight">
-            Module Management
+            Module {getModule} Management
           </h2>
           <p className="text-muted-foreground">
             Here&apos;s Module Management list. Only work for two type module: Backend (execute file) and Front end (static file)
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => {setOpenDialog(true)}} variant="outline">
+          <Button onClick={() => {setOpenDialog(true);setDataFrom(undefined)}} variant="outline">
             <Plus />
             MODULE
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <CardInformation name="BACKEND MODULE" rowIdKey="module_name" columnsDetail={columnsDetailBackend} data={backendModule} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <CardInformation name={`${getModule.toUpperCase()} MODULE`} rowIdKey="module_name" columnsDetail={getModule === "Frontend" ? columnsDetailFrontend : columnsDetailBackend} data={filterModule} />
         </div>
         <div>
-          <CardInformation name="FRONTEND MODULE" rowIdKey="module_name" columnsDetail={columnsDetailFrontend} data={frontendModule} />
+          <CardInformation name={`${getModule.toUpperCase()} MODULE GUIDE`} 
+            Content={
+              getModule === "Frontend" ?
+              ContentFrontendGuide :
+              ContentBackendGuide
+            }
+          />
         </div>
       </div>
       <FormModule 
+        key={getModule}
         openDialog={openDialog} 
         setOpenDialog={setOpenDialog} 
         data={dataForm} 
-        indexData={(moduleConfig?.data?.length ?? 1) - 1} 
+        // indexData={(moduleConfig?.data?.length ?? 1) - 1} 
+        indexData={moduleConfig?.data?.length} 
+        moduleType={getModule}
       />
       <AlertDialog open={openAlert} onOpenChange={setOpenAlert}>
         <AlertDialogContent>
