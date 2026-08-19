@@ -12,7 +12,7 @@ import { toast } from "sonner"
 
 import { ThemeProvider } from "@/components/theme-provider";
 
-import { useSidebar } from "@/components/ui/useHelper";
+// import { useSidebar } from "@/components/ui/useHelper";
 import { Toaster } from "@/components/ui/sonner";
 import {
   Avatar,
@@ -49,6 +49,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import Placeholder from "@/assets/placeholder.svg";

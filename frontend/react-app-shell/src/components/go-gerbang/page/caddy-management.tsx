@@ -1,4 +1,4 @@
-import { useState, Fragment, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Send, Ban, Save, EllipsisVertical } from "lucide-react";
 import useSWR from "swr";
 
@@ -6,8 +6,20 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button";
+import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -40,24 +52,17 @@ import CardInformation from "@/components/card-information";
 
 import { fetchSWR } from "@/services/use-swr-service";
 import { BackendUrlBase, FetchCsrfToken } from "@/services/baseService";
+
 import { cn } from "@/lib/utils";
+import { ENV_STATUS } from "@/lib/constants";
 import { 
   reverseTransformCaddyConfig, 
   transformCaddyConfig, 
   type FlatCaddyConfig 
 } from "@/lib/caddy";
-import { toast } from "sonner";
-import { ComboboxMultipleCreatable } from "../combobox-multiple-creatable";
-import { ENV_STATUS } from "@/lib/constants";
 
-// type TFormCaddy = {
-//   rewrite_uri?: string
-//   rewrite_strip_path_prefix?: string
-//   file_server?: string
-//   reserve_proxy?: string
-//   match_host?: string
-//   match_path?: string
-// }
+import { ComboboxMultipleCreatable } from "../combobox-multiple-creatable";
+
 
 const formSchema = z.object({
   type: z.string(),
@@ -67,10 +72,33 @@ const formSchema = z.object({
   rewrite_strip_path_prefix: z.string().optional(),
   file_server: z.string().optional(),
   reverse_proxy: z.string().optional(),
-  // match_path: z.string().optional(),
   match_path: z.array(z.string()).optional(),
   host: z.string().optional(),
+  i: z.number().optional(),
 });
+
+const defaultForm: Record<string, Partial<FlatCaddyConfig>> = {
+  s_three_object: {
+    type: "FE",
+    rewrite_uri: "/mfe/react-app-shell/index.html",
+    match_path: [
+      "/mfe/react-app-shell/assets/*",
+      "/mfe/react-app-shell/vite.svg"
+    ],
+    host: "s3.nevaobjects.id"
+  },
+  frontend: {
+    type: "FE",
+    rewrite_uri: "/index.html",
+    file_server: "/Users/reza/Documents/web/golang/go-gerbang/frontend/react-app-shell/dist"
+  },
+  backend: {
+    type: "BE",
+    match_path: ["/api/*"],
+    rewrite_strip_path_prefix: "/api",
+    reverse_proxy: "localhost:8000"
+  }
+}
 
 function SheetFormChild({
   openSheet,
@@ -83,42 +111,70 @@ function SheetFormChild({
   setOpenSheet?: (data: boolean) => void
   setCaddyConfig?: (data: FlatCaddyConfig) => void
 }) {
-  // console.log(dataForm)
+  // console.log(dataForm?.type)
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: "FE",
+      type: "",
       match_host: [],
-      // EXAMPLE
-      // reverse_proxy: "",
-      // rewrite_strip_path_prefix: "",
-      // file_server: "",
-      // rewrite_uri: "/mfe/react-app-shell/index.html",
-      // match_path: [
-      //   "/mfe/react-app-shell/assets/*",
-      //   "/mfe/react-app-shell/vite.svg"
-      // ],
-      // host: "s3.nevaobjects.id"
+      rewrite_uri: "",
+      rewrite_strip_path_prefix: "",
+      file_server: "",
+      reverse_proxy: "",
+      match_path: [],
+      host: "",
     },
   });
 
   const [type] = form.watch(["type"]);
+  // const type: any = "";
+
+  const getDefaultForm = (key: keyof typeof defaultForm) => {
+    const values = defaultForm[key];
+    if (!values) return;
+
+    form.reset({
+      ...values,
+    });
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // console.log(values)
-    setCaddyConfig?.(values as FlatCaddyConfig);
+    let cleanValue = Object.fromEntries(
+      Object.entries(values).filter(([_, value]) => {
+        if (Array.isArray(value)) {
+          return value.length > 0;
+        }
+        if (typeof value === "string") {
+          return value.trim() !== "";
+        }
+        return true;
+      })
+    );
+
+    if (dataForm?.i !== undefined) {
+      cleanValue = {
+        ...cleanValue,
+        i: dataForm.i
+      }
+    }
+
+    setCaddyConfig?.(cleanValue as FlatCaddyConfig);
     setOpenSheet?.(false);
   }
 
   useEffect(() => {
     if (dataForm && openSheet) {
+      if (dataForm.type) form.setValue("type", dataForm.type); // NOTE: NOT WORKING
+      // form.setValue("type", "BE");
+
       if (dataForm.match_host) form.setValue("match_host", dataForm.match_host);
       if (dataForm.match_path) form.setValue("match_path", dataForm.match_path);
       if (dataForm.rewrite_uri) form.setValue("rewrite_uri", dataForm.rewrite_uri); 
       if (dataForm.rewrite_strip_path_prefix) form.setValue("rewrite_strip_path_prefix", dataForm.rewrite_strip_path_prefix); 
       if (dataForm.file_server) form.setValue("file_server", dataForm.file_server); 
       if (dataForm.reverse_proxy) form.setValue("reverse_proxy", dataForm.reverse_proxy); 
+      if (dataForm.host) form.setValue("host", dataForm.host); 
     }
   }, [dataForm])
 
@@ -126,21 +182,33 @@ function SheetFormChild({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
         <div className="grid flex-1 auto-rows-min gap-6 px-4 overflow-auto pb-3">
+          <div className="flex flex-row items-center justify-between">
+            <div>Example:</div>
+            <ButtonGroup>
+              <Button variant="secondary" size="sm" type="button" onClick={() => getDefaultForm("s_three_object")}>S3 (FE)</Button>
+              <ButtonGroupSeparator />
+              <Button variant="secondary" size="sm" type="button" onClick={() => getDefaultForm("frontend")}>FE</Button>
+              <ButtonGroupSeparator />
+              <Button variant="secondary" size="sm" type="button" onClick={() => getDefaultForm("backend")}>BE</Button>
+              <ButtonGroupSeparator />
+              {/* <Button variant="secondary" size="sm" type="button" onClick={() => getDefaultForm("s_three_object")}>FE & BE</Button> */}
+            </ButtonGroup>
+          </div>
           <FormField
             control={form.control}
             name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Type Config</FormLabel>
+                <FormLabel>Type Config{type}</FormLabel>
                 <FormControl>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange}>
+                    <Select name={field.name} value={field.value ?? ""} onValueChange={field.onChange}>
                       <SelectTrigger id="module_type" className={cn(`w-full ${field.value && 'border-green-700'}`)}>
                         <SelectValue placeholder="Module Type" />
                       </SelectTrigger>
                       <SelectContent position="item-aligned">
                         <SelectItem value="FE">Frontend</SelectItem>
                         <SelectItem value="BE">Backend</SelectItem>
-                        <SelectItem value="FE-BE">Frontend - Backend</SelectItem>
+                        {/* <SelectItem value="FE-BE">Frontend - Backend</SelectItem> */}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -155,7 +223,6 @@ function SheetFormChild({
               <FormItem>
                 <FormLabel>Match Host</FormLabel>
                 <FormControl>
-                  {/* <Input type="text" placeholder="Match Host" className={cn(field.value && 'border-green-700 focus:border-green-700! focus:ring-green-700/40!')} {...field} /> */}
                   <ComboboxMultipleCreatable value={field.value} onValueChange={field.onChange} className={cn(field.value?.length && 'border-green-700 focus:border-green-700! focus:ring-green-700/40!')} placeholder="Match Host" />
                 </FormControl>  
                 <FormMessage />
@@ -268,6 +335,7 @@ function SheetFormChild({
 }
 
 export default function CaddyManagement() {
+  const [openDialog, setOpenDialog] = useState(false);
   const [openSheet, setOpenSheet] = useState(false);
 
   const { data, isLoading, mutate } = useSWR(`${BackendUrlBase}/check-local-service?url=http://localhost:2019/config&getRes=true`, fetchSWR);
@@ -317,14 +385,24 @@ export default function CaddyManagement() {
       header: "Rewrite (BE)",
     },
     {
-      accessorKey: "reserve_proxy",
-      header: "Reserve Proxy (BE)",
+      accessorKey: "reverse_proxy",
+      header: "Reverse Proxy (BE)",
+    },
+    {
+      accessorKey: "host",
+      header: "Host (S3)",
     },
     {
       accessorKey: "id",
       header: () => null,
       cell: ({ row }) => {
         const raw = row.original;
+        raw.type = "FE";
+        if (raw.rewrite_uri && raw.rewrite_strip_path_prefix) {
+          raw.type = "FE-BE";
+        } else if (raw.rewrite_strip_path_prefix) {
+          raw.type = "BE";
+        }
 
         return (
           <DropdownMenu>
@@ -339,9 +417,9 @@ export default function CaddyManagement() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuItem onClick={() => {setOpenSheet(true);setCaddyConfig(raw);console.log(raw)}}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {setOpenSheet(true);setCaddyConfig(raw);}}>Edit</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => {setCaddyConfig(raw)}}>Delete</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => {setCaddyConfig(raw);setOpenDialog(true)}}>Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -354,34 +432,62 @@ export default function CaddyManagement() {
   const applyConfig = async () => {
     setApplyState(true);
 
-    const PORT_CADDY = ENV_STATUS.MODE === "development" ? [":2001"] : [":443"];
-    // console.log(caddyConfig)
-    const parseConfig = caddyConfig ? reverseTransformCaddyConfig([caddyConfig], PORT_CADDY) : [];
-    // console.log(parseConfig);
+    const PORT_CADDY = ENV_STATUS.MODE === "development" ? [":2001"] : [":443", ":80"];
+
+    let getAllCaddyConfig = currectDataCaddy;
+    if (caddyConfig) {
+      if (caddyConfig?.i !== undefined) {
+        if (Object.keys(caddyConfig).length > 1) {
+          getAllCaddyConfig[caddyConfig?.i] = caddyConfig;
+        } else {
+          getAllCaddyConfig = getAllCaddyConfig.slice(0, caddyConfig?.i);
+        }
+      } else {
+        getAllCaddyConfig.push(caddyConfig);
+      }
+    }
     
-    const localForm = {
-      pki: {
+    const parseConfig = reverseTransformCaddyConfig(getAllCaddyConfig, PORT_CADDY);
+    const listTlsHosts = parseConfig?.routes?.flatMap(el =>
+      el.match?.flatMap(elem => elem?.host ?? [] ) ?? []
+    );
+    
+    const appendixForm = ENV_STATUS.MODE === "development" ? {
+      pki: { // FOR LOCALHOST DEV
         certificate_authorities: {
           local: {
             install_trust: false
           }
         }
       }
+    } : {
+      tls: { // FOR TLS PRODUCTION
+        certificates: {
+          automate: listTlsHosts
+        }
+      }
     };
+
+    const oldDataCaddy = data?.apps?.http?.servers?.srv0 ?? {}
 
     const initialForm = {
       http: {
         servers: {
-          srv0: parseConfig
+          srv0: {
+            ...oldDataCaddy,
+            ...parseConfig
+          }
         }
       }
     }
     const payload = {
       apps: {
         ...initialForm,
-        ...(ENV_STATUS.MODE === "development" && localForm)
+        ...appendixForm
       }
     };
+
+    // console.log(payload)
 
     const getCsrf = await FetchCsrfToken();
 
@@ -453,38 +559,29 @@ export default function CaddyManagement() {
           setCaddyConfig={setCaddyConfig}
         />
       </SheetForm>
-      {/* <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
+      <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {dataForm?.sender} Notification?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Setting Caddy?</AlertDialogTitle>
             <AlertDialogDescription>
               This action will delete the data. Data deleted cannot be restored.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="overflow-auto">
+            <pre>{JSON.stringify(caddyConfig, null, 2)}</pre>
+          </div>
           <AlertDialogFooter>
             <AlertDialogAction>Cancel</AlertDialogAction>
             <AlertDialogCancel variant="destructive" onClick={() => {
-              if (dataForm?.notif_type) {
-                toast.promise(
-                  useDeleteConfiguration(dataForm?.notif_type, dataForm?.sender),
-                  {
-                    loading: "Waiting...",
-                    success: () => {
-                      mutateData();
-                      setOpenDialog(false);
-                      return "Success"
-                    },
-                    error: (err) => {
-                      setOpenDialog(false);
-                      return err.message || "Failed"
-                    },
-                  } 
-                )
+              if (caddyConfig?.i !== undefined) {
+                const { i, ...rest } = caddyConfig;
+                console.log(rest);
+                setCaddyConfig({ i });
               }
             }}>Delete</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog> */}
+      </AlertDialog>
     </div>
   )
 }

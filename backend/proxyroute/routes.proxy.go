@@ -28,6 +28,11 @@ func MainProxyRoutes(app *fiber.App) {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
+	err = middleware.InitCasbin()
+	if err != nil {
+		log.Fatalf("Error loading Casbin: %v", err)
+	}
+
 	handlers.MapMicroServiceMutex.Lock()
 	handlers.MapMicroService = cfg
 	handlers.MapMicroServiceMutex.Unlock()
@@ -50,52 +55,9 @@ var ProxyClient = &http.Client{
 	},
 }
 
-type CasbinRule struct {
-	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	Ptype string `gorm:"size:255;uniqueIndex:unique_index"`
-	V0    string `gorm:"size:255;uniqueIndex:unique_index"`
-	V1    string `gorm:"size:255;uniqueIndex:unique_index"`
-	V2    string `gorm:"size:128;uniqueIndex:unique_index"`
-	V3    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
-	V4    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
-	V5    string `gorm:"default:null;size:128;uniqueIndex:unique_index"`
-}
-
 func RegisterRoutes(app *fiber.App) {
 	handlers.MapMicroServiceMutex.RLock()
 	defer handlers.MapMicroServiceMutex.RUnlock()
-
-	// proxy.WithClient(ProxyClient)
-
-	// RBAC PROTECTION
-	// NEED AUTH PROTECTION
-	// a, _ := gormadapter.NewAdapterByDBWithCustomTable(database.GDB, &CasbinRule{})
-	// a := fileadapter.NewAdapter(config.BasePath + config.Config("CONFIG_PATH_CASBIN_POLICY"))
-	// authz := casbin.New(casbin.Config{
-	// 	ModelFilePath: config.BasePath + config.Config("CONFIG_PATH_CASBIN_MODEL"),
-	// 	PolicyAdapter: a,
-	// 	Lookup: func(c fiber.Ctx) string {
-	// 		user, ok := c.Locals("user").(*models.UserData)
-	// 		if !ok {
-	// 			return ""
-	// 		}
-	// 		sub := strconv.Itoa(int(user.StatusAccount))
-
-	// 		return sub
-	// 	},
-	// 	Unauthorized: func(c fiber.Ctx) error {
-	// 		return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("your role don't have authorization"))
-	// 	},
-	// 	Forbidden: func(c fiber.Ctx) error {
-	// 		// user, _ := c.Locals("user").(*models.UserData)
-	// 		// fmt.Printf("[DEBUG] FORBIDDEN: sub=%v, obj=%v, act=%v\n",
-	// 		// 	user.StatusAccount,
-	// 		// 	c.Path(),
-	// 		// 	c.Method(),
-	// 		// )
-	// 		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("your role don't have access"))
-	// 	},
-	// })
 
 	sort.Slice(handlers.MapMicroService.Services, func(i, j int) bool {
 		return len(handlers.MapMicroService.Services[i].Path) > len(handlers.MapMicroService.Services[j].Path)
@@ -114,7 +76,6 @@ func RegisterRoutes(app *fiber.App) {
 			middlewares = append(middlewares, middleware.ValidateSession)
 		}
 		if service.RbacProtection {
-			// middlewares = append(middlewares, middleware.Auth)
 			middlewares = append(middlewares, middleware.AuthRBAC)
 		}
 

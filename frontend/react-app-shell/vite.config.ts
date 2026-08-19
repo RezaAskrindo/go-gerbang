@@ -34,14 +34,15 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/backend': {
-        target: 'http://localhost:9000',
-        // target: 'https://gateway.siskor.web.id',
+        // target: 'http://localhost:9000',
+        target: 'https://gateway.siskor.web.id',
         changeOrigin: true,
         rewrite: (path: string) => path.replace(/^\/backend/, ''),
       },
     },
   },
   // base: 'http://localhost:2001',
+  base: process.env.NODE_ENV === 'development' ? '/' : '/mfe/react-app-shell/',
   preview: {
     port: 2001,
   },

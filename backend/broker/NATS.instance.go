@@ -49,5 +49,5 @@ func StartingNatsClient() {
 		log.Printf("Error connecting to NATS server: %v", err)
 	}
 
-	fmt.Printf("✅ NATS client connected at:%s\n", serverURL)
+	// fmt.Printf("✅ NATS client connected at:%s\n", serverURL)
 }

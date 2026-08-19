@@ -1,5 +1,6 @@
 export interface FlatCaddyConfig {
   i?: number;
+  type?: string;
   rewrite_uri?: string;
   rewrite_strip_path_prefix?: string;
   file_server?: string;
@@ -42,7 +43,7 @@ function extractS3Host(route: CaddyRoute): string | undefined {
       h.handler === "reverse_proxy" && !!h.transport?.tls
   );
   if (!handler) return undefined;
-  return handler.headers?.request?.set?.Host?.[0] ?? handler.upstreams?.[0]?.dial?.replace(/:443$/, "");
+  return handler.headers?.request?.set?.Host?.[0] ?? handler.upstreams?.[0]?.dial;
 }
 
 function hasRewrite(route: CaddyRoute): boolean {
@@ -97,7 +98,11 @@ function mapSingleRoute(route: CaddyRoute, index: number): FlatCaddyConfig {
 
 export function transformCaddyConfig(config: CaddyConfig): FlatCaddyConfig[] {
   const result: FlatCaddyConfig[] = [];
-  const routes = config.routes;
+  const routes = config?.routes;
+
+  if (!routes) {
+    return result;
+  }
 
   for (let idx = 0; idx < routes.length; idx++) {
     const route = routes[idx];
@@ -111,7 +116,12 @@ export function transformCaddyConfig(config: CaddyConfig): FlatCaddyConfig[] {
       const next = routes[idx + 1];
       const nextHost = next ? extractS3Host(next) : undefined;
 
-      if (next && nextHost === host && hasRewrite(next) && !hasMatch(next)) {
+      if (
+        next &&
+        nextHost === host &&
+        hasRewrite(next) &&
+        (!hasMatch(next) || (next.match?.length === 1 && next.match[0].host && !next.match[0].path))
+      ) {
         const matchRule = route.match![0];
         const rewriteHandler = next.handle.find(
           (h): h is Extract<CaddyHandler, { handler: "rewrite" }> => h.handler === "rewrite"

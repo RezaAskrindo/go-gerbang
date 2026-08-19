@@ -182,11 +182,11 @@ func (r *Renderer) load(name string) {
 		"mail-templates/"+name+".html",
 	))
 
-	fmt.Println("Loaded templates:")
+	// fmt.Println("Loaded templates:")
 
-	for k := range r.Templates {
-		fmt.Println("-", k)
-	}
+	// for k := range r.Templates {
+	// 	fmt.Println("-", k)
+	// }
 
 	r.Templates[name] = t
 }
