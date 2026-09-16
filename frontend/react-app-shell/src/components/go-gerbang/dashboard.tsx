@@ -154,18 +154,70 @@ const ServicesInfo = () => {
   const [edit, setEdit] = useState(false);
   const [listInfoData, setListInfoData] = useState<InfoDataType[]>([]);
 
-  const { data: infoData } = useSWR(`${BackendUrlBase}/info`, fetchSWR, SWRDashboardConfig);
+  const { data: infoData = [], mutate, isLoading } = useSWR(`${BackendUrlBase}/info`, fetchSWR, SWRDashboardConfig);
 
-  const handleProtectionChange = (field: string, val: boolean | string, index: number) => {
-    const updatedData = [...listInfoData];
-    updatedData[index] = { ...updatedData[index], [field]: val };
-    setListInfoData(updatedData);
+  const handleEditChange = (checked: boolean) => {
+    if (checked) {
+      setListInfoData(
+        infoData.map((item: any) => ({
+          ...item,
+        }))
+      );
+    }
+
+    setEdit(checked);
+  };
+
+  // const handleProtectionChange = (field: string, val: boolean | string, index: number) => {
+  //   const updatedData = [...listInfoData];
+  //   updatedData[index] = { ...updatedData[index], [field]: val };
+  //   setListInfoData(updatedData);
+  // };
+  const handleProtectionChange = <K extends keyof InfoDataType>(
+    field: K,
+    value: InfoDataType[K],
+    index: number
+  ) => {
+    setListInfoData((prevItems) =>
+      prevItems.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
+      )
+    );
+  };
+
+  const handleAdd = () => {
+    setListInfoData((prevItems) => [
+      ...prevItems,
+      {
+        auth_protection: false,
+        csrf_protection: false,
+        session_protection: false,
+        path: "",
+        rbac_protection: false,
+        service: "",
+        status: false,
+        url: "",
+      },
+    ]);
+  };
+
+  const handleDelete = (index: number) => {
+    setListInfoData((prevItems) =>
+      prevItems.filter((_, itemIndex) => itemIndex !== index)
+    );
+  };
+
+  const handleCancel = () => {
+    setListInfoData([]);
+    setEdit(false);
   };
 
   const handleUpdate = () => {
-    // listInfoData.forEach(obj => {
-    //   delete obj.status;
-    // });
     toast.promise(
       fetch(`${BackendUrlBase}/config-file`, {
         method: "POST",
@@ -180,16 +232,25 @@ const ServicesInfo = () => {
       }),
       {
         loading: "Waiting...",
-        success: () => {
+        success: async () => {
+          await mutate();
+
+          // Clear draft and leave edit mode
+          setListInfoData([]);
+          setEdit(false);
           // mutate(`${BackendUrlBase}/info`);
           return "Success"
         },
-        error: (err) => {
+        error: async (err) => {
+          setListInfoData([]);
+          setEdit(false);
           return err.message || "Failed"
         },
       }
     )
   }
+
+  const displayData = edit ? listInfoData : infoData;
 
   return (
     <Card className="gap-2">
@@ -198,7 +259,7 @@ const ServicesInfo = () => {
         <CardDescription>List of service gateway</CardDescription>
         <CardAction>
           <div className="flex items-center space-x-2">
-            <Switch id="edit-mode" onCheckedChange={setEdit} checked={edit} />
+            <Switch id="edit-mode" onCheckedChange={handleEditChange} checked={edit} />
             <Label htmlFor="edit-mode">Edit Mode</Label>
           </div>
         </CardAction>
@@ -222,78 +283,163 @@ const ServicesInfo = () => {
           </TableHeader>
 
           <TableBody>
-            {infoData?.length > 0 ? (
-              infoData?.map((el: InfoDataType, index: number) => (
-                <TableRow key={`${el.url}-${index}`}>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : displayData.length > 0 ? (
+              displayData.map((el: any, index: number) => (
+                <TableRow key={`${index}`}>
                   <TableCell>
                     {edit ? (
-                      <Button variant="destructive" size="icon" onClick={() => setListInfoData((prevItems) => prevItems.filter((_, i) => i !== index))}>
+                      <Button variant="destructive" size="icon" onClick={() => handleDelete(index)}>
                         <Trash2 />
                       </Button>
+                    ) : el.status ? (
+                      <Button className="bg-green-600 h-5" size="sm">live</Button>
                     ) : (
-                      el.status ? 
-                        <Button className="bg-green-600 h-5" size="sm">live</Button> : 
-                        <Button className="bg-red-500 h-5" size="sm">off</Button>
-                      )
-                    }
-                  </TableCell>
-                  <TableCell>{
-                    edit ? 
-                    (<Input value={el.service} onChange={(e) => handleProtectionChange('service', e.target.value, index)} />):
-                    el.service
-                  }</TableCell>
-                  <TableCell>{
-                    edit ? 
-                    (<Input value={el.path} onChange={(e) => handleProtectionChange('path', e.target.value, index)} />):
-                    <a href={`${BackendUrlBase}${el.path}`} className="underline text-blue-700 dark:text-blue-400" target="_blank"> {el.path}</a>
-                  }</TableCell>
-                  <TableCell>{
-                    edit ? 
-                    (<Input value={el.url} onChange={(e) => handleProtectionChange('url', e.target.value, index)} />):
-                    el.url
-                  }</TableCell>
-                  <TableCell>
-                    {edit ? (
-                      <div className="flex justify-center"><Switch
-                        id={`csrf-toggle-${index}`}
-                        checked={el.csrf_protection}
-                        onCheckedChange={(checked: boolean) => handleProtectionChange('csrf_protection', checked, index)}
-                      /></div>
-                    ) : (
-                      el.csrf_protection ? <Check className="text-green-500 mx-auto size-5" /> : <X className="text-red-500 mx-auto size-5" />
+                      <Button className="bg-red-500 h-5" size="sm">off</Button>
                     )}
                   </TableCell>
                   <TableCell>
                     {edit ? (
-                      <div className="flex justify-center"><Switch
-                        id={`auth-toggle-${index}`}
-                        checked={el.auth_protection}
-                        onCheckedChange={(checked: boolean) => handleProtectionChange('auth_protection', checked, index)}
-                      /></div>
+                      <Input
+                        value={el.service}
+                        onChange={(e) =>
+                          handleProtectionChange(
+                            "service",
+                            e.target.value,
+                            index
+                          )
+                        }
+                      />
                     ) : (
-                      el.auth_protection ? <Check className="text-green-500 mx-auto size-5" /> : <X className="text-red-500 mx-auto size-5" />
+                      el.service
                     )}
                   </TableCell>
                   <TableCell>
                     {edit ? (
-                      <div className="flex justify-center"><Switch
-                        id={`session-toggle-${index}`}
-                        checked={el.session_protection}
-                        onCheckedChange={(checked: boolean) => handleProtectionChange('session_protection', checked, index)}
-                      /></div>
+                      <Input
+                        value={el.path}
+                        onChange={(e) =>
+                          handleProtectionChange(
+                            "path",
+                            e.target.value,
+                            index
+                          )
+                        }
+                      />
                     ) : (
-                      el.session_protection ? <Check className="text-green-500 mx-auto size-5" /> : <X className="text-red-500 mx-auto size-5" />
+                      <a
+                        href={`${BackendUrlBase}${el.path}`}
+                        className="underline text-blue-700 dark:text-blue-400"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {el.path}
+                      </a>
                     )}
                   </TableCell>
                   <TableCell>
                     {edit ? (
-                      <div className="flex justify-center"><Switch
-                        id={`rbac-toggle-${index}`}
-                        checked={el.rbac_protection}
-                        onCheckedChange={(checked: boolean) => handleProtectionChange('rbac_protection', checked, index)}
-                      /></div>
+                      <Input
+                        value={el.url}
+                        onChange={(e) =>
+                          handleProtectionChange(
+                            "url",
+                            e.target.value,
+                            index
+                          )
+                        }
+                      />
                     ) : (
-                      el.rbac_protection ? <Check className="text-green-500 mx-auto size-5" /> : <X className="text-red-500 mx-auto size-5" />
+                      el.url
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {edit ? (
+                      <div className="flex justify-center">
+                        <Switch
+                          id={`csrf-toggle-${index}`}
+                          checked={el.csrf_protection}
+                          onCheckedChange={(checked) =>
+                            handleProtectionChange(
+                              "csrf_protection",
+                              checked,
+                              index
+                            )
+                          }
+                        />
+                      </div>
+                    ) : el.csrf_protection ? (
+                      <Check className="text-green-500 mx-auto size-5" />
+                    ) : (
+                      <X className="text-red-500 mx-auto size-5" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {edit ? (
+                      <div className="flex justify-center">
+                        <Switch
+                          id={`auth-toggle-${index}`}
+                          checked={el.auth_protection}
+                          onCheckedChange={(checked) =>
+                            handleProtectionChange(
+                              "auth_protection",
+                              checked,
+                              index
+                            )
+                          }
+                        />
+                      </div>
+                    ) : el.auth_protection ? (
+                      <Check className="text-green-500 mx-auto size-5" />
+                    ) : (
+                      <X className="text-red-500 mx-auto size-5" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {edit ? (
+                      <div className="flex justify-center">
+                        <Switch
+                          id={`session-toggle-${index}`}
+                          checked={el.session_protection}
+                          onCheckedChange={(checked) =>
+                            handleProtectionChange(
+                              "session_protection",
+                              checked,
+                              index
+                            )
+                          }
+                        />
+                      </div>
+                    ) : el.session_protection ? (
+                      <Check className="text-green-500 mx-auto size-5" />
+                    ) : (
+                      <X className="text-red-500 mx-auto size-5" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {edit ? (
+                      <div className="flex justify-center">
+                        <Switch
+                          id={`rbac-toggle-${index}`}
+                          checked={el.rbac_protection}
+                          onCheckedChange={(checked) =>
+                            handleProtectionChange(
+                              "rbac_protection",
+                              checked,
+                              index
+                            )
+                          }
+                        />
+                      </div>
+                    ) : el.rbac_protection ? (
+                      <Check className="text-green-500 mx-auto size-5" />
+                    ) : (
+                      <X className="text-red-500 mx-auto size-5" />
                     )}
                   </TableCell>
                 </TableRow>
@@ -307,17 +453,9 @@ const ServicesInfo = () => {
         </Table>
         {edit && (
           <div className="flex flex-row gap-2 mt-2">
-            <Button variant="outline" onClick={() => setListInfoData((prevItems) => [...prevItems, {
-              auth_protection: false,
-              csrf_protection: false,
-              session_protection: false,
-              path: "",
-              rbac_protection: false,
-              service: "",
-              status: false,
-              url: "",
-            }])}>Add</Button>
+            <Button variant="outline" onClick={handleAdd}>Add</Button>
             <Button variant="outline" onClick={handleUpdate}>Save</Button>
+            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
           </div>
         )}
       </CardContent>

@@ -38,10 +38,10 @@ func MainRoutes(app *fiber.App) {
 
 	// PUB / SUB
 	app.Post("/publish", services.PublishService)
-	app.Get("/subscribe", services.SubscribeService)
+	// app.Get("/subscribe", services.SubscribeService) // Not use anymore?
 
 	// MAIL
-	app.Get("/check-mail", services.MailTesting)
+	// app.Get("/check-mail", services.MailTesting) // Not use anymore?
 
 	// SERVICE
 	app.Post("/restart", services.RestartHandler)

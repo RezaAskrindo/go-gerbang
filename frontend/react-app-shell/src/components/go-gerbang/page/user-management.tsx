@@ -100,7 +100,7 @@ const ModalForm = ({typeForm, value, open, setOpen, mutate}: ModalFormProps) => 
 
 const required = <span className="text-red-500 -ms-1.5">*</span>
 
-type Account = {
+export type Account = {
   idAccount?: string
   identityNumber: string
   username: string

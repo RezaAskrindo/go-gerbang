@@ -33,7 +33,8 @@ func StartingNatsServer() (*server.Server, error) {
 		return nil, fmt.Errorf("NATS server failed to start")
 	}
 
-	fmt.Printf("✅ NATS server running :9001\n")
+	// fmt.Printf("✅ NATS server running :9001\n")
+	fmt.Printf("[INFO] NATS server running :9001\n")
 
 	return natsServer, nil
 }

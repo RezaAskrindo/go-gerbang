@@ -1,13 +1,8 @@
 package services
 
 import (
-	"fmt"
-
-	"go-gerbang/handlers"
+	"go-gerbang/config"
 	"go-gerbang/models"
-	"go-gerbang/types"
-
-	"github.com/gofiber/fiber/v3"
 )
 
 // baseURL := "https://api2.callmebot.com/text.php"
@@ -50,101 +45,97 @@ import (
 // 	fasthttp.ReleaseResponse(resp)
 // }
 
-func MailTesting(c fiber.Ctx) error {
-	to := c.Query("to")
-	if to == "" {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params to"))
-	}
+// func MailTesting(c fiber.Ctx) error {
+// 	to := c.Query("to")
+// 	if to == "" {
+// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params to"))
+// 	}
 
-	appName := c.Query("appName")
-	if appName == "" {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params appName"))
-	}
+// 	appName := c.Query("appName")
+// 	if appName == "" {
+// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params appName"))
+// 	}
 
-	provider := c.Query("provider")
-	if provider == "" {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params provider"))
-	}
+// 	provider := c.Query("provider")
+// 	if provider == "" {
+// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("need params provider"))
+// 	}
 
-	if !handlers.IsValidEmail(to) {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("please provide valid email"))
-	}
+// 	if !handlers.IsValidEmail(to) {
+// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("please provide valid email"))
+// 	}
 
-	dataSend := &types.ListEmail{
-		Sender:  appName,
-		Subject: "Testing Email!",
-		// BodyTemplateText: "Testing email...",
-		// BodyTemplateHtml: "<p>Testing email...</p>",
-		Emails: []types.Email{
-			{Name: "Test User", EmailAddr: to},
-		},
-	}
+// 	dataSend := &types.ListEmail{
+// 		Sender:  appName,
+// 		Subject: "Testing Email!",
+// 		// BodyTemplateText: "Testing email...",
+// 		// BodyTemplateHtml: "<p>Testing email...</p>",
+// 		Emails: []types.Email{
+// 			{Name: "Test User", EmailAddr: to},
+// 		},
+// 	}
 
-	tipe := c.Query("type")
-	if tipe == "event" {
-		var sendToEvent types.SendingEmailToBroker
-		sendToEvent = types.SendingEmailToBroker{
-			Sender:   appName,
-			Provider: provider,
-			Subject:  "Testing Email!",
-			// Title:    dataSend.Subject,
-			// BodyText: dataSend.BodyTemplateText,
-			// Body:     dataSend.BodyTemplateHtml,
-			// Footer:   "",
-			Template: "testing-mail",
-			Data: map[string]any{
-				"title":   "Testing Email!",
-				"message": "Testing email...",
-			},
-			Emails: dataSend.Emails,
-		}
-		PublishEvent("user.notification", sendToEvent)
-		return handlers.SuccessResponse(c, true, "Send Mail On Event Success", nil, nil)
-	}
+// 	tipe := c.Query("type")
+// 	if tipe == "event" {
+// 		var sendToEvent types.SendingEmailToBroker
+// 		sendToEvent = types.SendingEmailToBroker{
+// 			Sender:   appName,
+// 			Provider: provider,
+// 			Subject:  "Testing Email!",
+// 			// Title:    dataSend.Subject,
+// 			// BodyText: dataSend.BodyTemplateText,
+// 			// Body:     dataSend.BodyTemplateHtml,
+// 			// Footer:   "",
+// 			Template: "testing-mail",
+// 			Data: map[string]any{
+// 				"title":   "Testing Email!",
+// 				"message": "Testing email...",
+// 			},
+// 			Emails: dataSend.Emails,
+// 		}
+// 		PublishEvent("user.notification", sendToEvent)
+// 		return handlers.SuccessResponse(c, true, "Send Mail On Event Success", nil, nil)
+// 	}
 
-	// if provider == "Resend" {
-	// 	if !handlers.SendResendMail(dataSend) {
-	// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
-	// 	}
-	// } else if provider == "SMTP" && !handlers.SendSMTPMail(dataSend) {
-	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
-	// } else {
-	// 	return handlers.SuccessResponse(c, true, "Send Mail Not On Configuration", nil, nil)
-	// }
+// 	// if provider == "Resend" {
+// 	// 	if !handlers.SendResendMail(dataSend) {
+// 	// 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
+// 	// 	}
+// 	// } else if provider == "SMTP" && !handlers.SendSMTPMail(dataSend) {
+// 	// 	return handlers.InternalServerErrorResponse(c, fmt.Errorf("%s", "failed to send email using "+provider))
+// 	// } else {
+// 	// 	return handlers.SuccessResponse(c, true, "Send Mail Not On Configuration", nil, nil)
+// 	// }
 
-	dataSend.BodyTemplateText = "Testing email..."
+// 	dataSend.BodyTemplateText = "Testing email..."
 
-	html, err := handlers.MailRenderer.Render("testing-mail",
-		map[string]any{
-			"Title":   "Testing Email!",
-			"Message": "Testing email...",
-			"Footer":  "Ini email otomatis",
-		})
-	if err != nil {
-		return handlers.InternalServerErrorResponse(c, err)
-	}
+// 	html, err := handlers.MailRenderer.Render("testing-mail",
+// 		map[string]any{
+// 			"Title":   "Testing Email!",
+// 			"Message": "Testing email...",
+// 			"Footer":  "Ini email otomatis",
+// 		})
+// 	if err != nil {
+// 		return handlers.InternalServerErrorResponse(c, err)
+// 	}
 
-	dataSend.BodyTemplateHtml = html
+// 	dataSend.BodyTemplateHtml = html
 
-	switch provider {
-	case "Resend":
-		if !handlers.SendResendMail(dataSend) {
-			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed send"))
-		}
-	case "SMTP":
-		if !handlers.SendSMTPMail(dataSend) {
-			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed send"))
-		}
-	}
+// 	switch provider {
+// 	case "SMTP":
+// 		if !handlers.SendSMTPMail(dataSend) {
+// 			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed send"))
+// 		}
+// 	}
 
-	return handlers.SuccessResponse(c, true, "Check Mail Success", nil, nil)
-}
+// 	return handlers.SuccessResponse(c, true, "Check Mail Success", nil, nil)
+// }
 
 func QueueUserInformation(providerNotification string, querySender string, user *models.User, sendPass bool) bool {
-	Sender := "GOGERBANG"
-	if querySender != "" {
-		Sender = querySender
-	}
+	// Sender := "GOGERBANG"
+	// if querySender != "" {
+	// 	Sender = querySender
+	// }
 
 	// textPass := ``
 	// htmlPass := ``
@@ -153,10 +144,10 @@ func QueueUserInformation(providerNotification string, querySender string, user 
 	// 	htmlPass = `<div>password: <strong>` + user.Password + `</strong></div>`
 	// }
 
-	sendEmail := new(types.SendingEmailToBroker)
-	sendEmail.Sender = Sender
-	sendEmail.Provider = providerNotification
-	sendEmail.Subject = "Create Account Success"
+	// sendEmail := new(types.SendingEmailToBroker)
+	// sendEmail.Sender = Sender
+	// sendEmail.Provider = providerNotification
+	// sendEmail.Subject = "Create Account Success"
 	// sendEmail.Title = "Akun Anda Berhasil Di Buat"
 	// sendEmail.BodyText = `
 	// 	Hi, ` + user.FullName + `, berikut informasi akun anda:
@@ -175,21 +166,46 @@ func QueueUserInformation(providerNotification string, querySender string, user 
 	// 	<div class="padding-top: 20px; font-size: 12px; line-height: 16px; color: rgb(95, 99, 104); letter-spacing: 0.3px; text-align: center;">Tetap jaga rahasia akun anda, mohon untuk jangan diberikan kepada siapapun termasuk Admin.</div>
 	// `
 	// sendEmail.Footer = "ini merupakan email otomatis dari " + Sender
-	sendEmail.Data = map[string]any{
-		"name":     user.FullName,
-		"username": user.Username,
-		"email":    user.Email,
-		"password": user.Password,
-		"sender":   Sender,
-	}
-	sendEmail.Emails = []types.Email{
-		{
-			Name:      user.FullName,
-			EmailAddr: user.Email,
-		},
-	}
+	// sendEmail.Data = map[string]any{
+	// 	"name":     user.FullName,
+	// 	"username": user.Username,
+	// 	"email":    user.Email,
+	// 	"password": user.Password,
+	// 	"sender":   Sender,
+	// }
+	// sendEmail.Emails = []types.Email{
+	// 	{
+	// 		Name:      user.FullName,
+	// 		EmailAddr: user.Email,
+	// 	},
+	// }
 
-	PublishEvent("user.notification", sendEmail)
+	accID := config.Config("EMAIL_ACCOUNT_ID")
+
+	subject := "email.send"
+	// payload := map[string]any{}
+
+	if accID != "" {
+		pass := ""
+		if sendPass {
+			pass = user.Password
+		}
+
+		payload := map[string]interface{}{
+			"account_id":    accID,
+			"recipients":    []string{user.Email},
+			"subject":       "Create Account Success",
+			"template_name": "user_created",
+			"template_data": map[string]any{
+				"Name":     user.FullName,
+				"Username": user.Username,
+				"Email":    user.Email,
+				"Password": pass,
+			},
+		}
+
+		PublishEvent(subject, payload)
+	}
 
 	return true
 }

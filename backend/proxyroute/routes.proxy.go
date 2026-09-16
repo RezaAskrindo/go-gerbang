@@ -28,10 +28,10 @@ func MainProxyRoutes(app *fiber.App) {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
-	err = middleware.InitCasbin()
-	if err != nil {
-		log.Fatalf("Error loading Casbin: %v", err)
-	}
+	// err = middleware.InitCasbin()
+	// if err != nil {
+	// 	log.Fatalf("Error loading Casbin: %v", err)
+	// }
 
 	handlers.MapMicroServiceMutex.Lock()
 	handlers.MapMicroService = cfg
@@ -75,9 +75,9 @@ func RegisterRoutes(app *fiber.App) {
 		if service.SessionProtection {
 			middlewares = append(middlewares, middleware.ValidateSession)
 		}
-		if service.RbacProtection {
-			middlewares = append(middlewares, middleware.AuthRBAC)
-		}
+		// if service.RbacProtection {
+		// 	middlewares = append(middlewares, middleware.AuthRBAC)
+		// }
 
 		// Build args properly
 		if len(middlewares) > 0 {

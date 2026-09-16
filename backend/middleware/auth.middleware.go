@@ -20,7 +20,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/steambap/captcha"
 )
 

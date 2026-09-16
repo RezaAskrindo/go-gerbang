@@ -364,3 +364,11 @@ func ExecuteScript(scriptPath, workDir string) error {
 
 	return nil
 }
+
+func ExtractEmailAddrs(listEmail types.ListEmail) []string {
+	var emailAddrs []string
+	for _, email := range listEmail.Emails {
+		emailAddrs = append(emailAddrs, email.EmailAddr)
+	}
+	return emailAddrs
+}

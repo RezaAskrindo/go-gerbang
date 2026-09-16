@@ -7,6 +7,7 @@ import useSWR from "swr";
 
 import { Chart, type ChartOptions, Palette } from '@highcharts/react';
 import { Area } from '@highcharts/react/series';
+import { Accessibility } from '@highcharts/react/modules/Accessibility';
 
 import {
   Card,
@@ -148,6 +149,7 @@ export default function MetricsInfo() {
             <Area.Series data={ramSeries[0].data} />
             <Area.Series data={ramSeries[1].data} />
             <Area.Series data={ramSeries[2].data} />
+            <Accessibility />
           </Chart>
         </CardFooter>
       </Card>
@@ -173,6 +175,7 @@ export default function MetricsInfo() {
               }}
             />
             <Area.Series data={cpuSeries} />
+            <Accessibility />
           </Chart>
         </CardFooter>
       </Card>
@@ -198,6 +201,7 @@ export default function MetricsInfo() {
               }}
             />
             <Area.Series data={rtimeSeries} />
+            <Accessibility />
           </Chart>
         </CardFooter>
       </Card>
@@ -223,6 +227,7 @@ export default function MetricsInfo() {
               }}
             />
             <Area.Series data={connsSeries} />
+            <Accessibility />
           </Chart>
         </CardFooter>
       </Card>

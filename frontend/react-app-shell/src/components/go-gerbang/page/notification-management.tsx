@@ -382,7 +382,7 @@ export default function NotificationManagement() {
 
   useEffect(() => {
     if (!openSheet) {
-      console.log("Here")
+      // console.log("Here")
       mutateData();
       setDataFrom(undefined);
     }

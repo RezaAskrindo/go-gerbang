@@ -37,6 +37,10 @@ OR
 
 $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o apigateway-9000
 
+OR
+
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o apigateway-9000
+
 If env not work
 
 ## Running in background in LINUX

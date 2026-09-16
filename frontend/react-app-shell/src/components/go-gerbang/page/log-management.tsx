@@ -1,8 +1,11 @@
 import { lazy, Suspense, useState, type FC } from "react";
 import useSWR from "swr";
-import useSWRMutation from "swr/mutation";
-import { CalendarDays, ChevronRight, Clock2, RefreshCcw, Search, Timer, User } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock2, Search, Timer, User } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+
+import { Chart, Palette, Tooltip } from '@highcharts/react';
+import { PieSeries } from '@highcharts/react/series/Pie';
+import { Accessibility } from '@highcharts/react/modules/Accessibility';
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar"
@@ -197,6 +200,54 @@ const DetailLogProxy: FC<DetailLogProxyProps> = ({ row, dateBegin, dateEnd }) =>
   )
 }
 
+const ChartPieInfo = ({
+  data
+}: {
+  data: Array<[string, number]>
+}) => {
+
+  return (
+    <Chart title="" options={{
+      chart: { height: 200, width: 400},
+      credits: {enabled: false}
+    }}>
+      <Palette
+        light={{
+          backgroundColor: "var(--background)",
+          neutralColor: "var(--foreground)",
+          highlightColor: "var(--primary)",
+        }}
+        dark={{
+          backgroundColor: "var(--background)",
+          neutralColor: "var(--foreground)",
+          highlightColor: "var(--primary)",
+        }}
+      />
+      <Tooltip valueSuffix="%" />
+      <PieSeries
+        name="Allocation"
+        data={data}
+        options={{
+          borderRadius: 8, // Rounded slice corners
+          borderWidth: 3,
+          innerSize: '60%', // Turning the pie into a donut
+          // We can show multiple data labels per point
+          dataLabels: [
+            { format: '{point.name}' },
+            {
+              format: '{point.percentage:.0f}%',
+              distance: '-15%', // Placing the label inside
+              backgroundColor: 'contrast',
+              style: { textOutline: 'none' }
+            }
+          ]
+        }}
+      />
+      <Accessibility />
+    </Chart>
+  )
+}
+
 const columns: ColumnDef<TLogProxy>[] = [
   {
     id: "service",
@@ -237,32 +288,96 @@ const columns: ColumnDef<TLogProxy>[] = [
   },
 ];
 
+const getDefaultDates = () => {
+  const now = new Date();
+
+  const begin = new Date(now);
+  begin.setFullYear(begin.getFullYear() - 1);
+  begin.setHours(0, 0, 0, 0);
+
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    begin,
+    end,
+  };
+};
 
 export default function LogManagement() {
+  const { begin, end } = getDefaultDates();
+  
   const[openBegin, setOpenBegin] = useState(false); 
-  const[dateBegin, setDateBegin] = useState<Date | undefined>(undefined);
+  const[dateBegin, setDateBegin] = useState<Date | undefined>(begin);
   const[openEnd, setOpenEnd] = useState(false); 
-  const[dateEnd, setDateEnd] = useState<Date | undefined>(undefined);
+  const[dateEnd, setDateEnd] = useState<Date | undefined>(end);
 
   const handleTimeBeginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const [h, m, s] = value.split(":").map(Number);
+
     if (!dateBegin) return;
+
     const newDate = new Date(dateBegin);
-    newDate.setHours(h || 0, m || 0, s || 0);
+
+    newDate.setHours(
+      Number.isNaN(h) ? 0 : h,
+      Number.isNaN(m) ? 0 : m,
+      Number.isNaN(s) ? 0 : s,
+      0
+    );
+
     setDateBegin(newDate);
   };
 
   const handleTimeEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const [h, m, s] = value.split(":").map(Number);
-    if (!dateEnd) return;
-    const newDate = new Date(dateEnd);
-    newDate.setHours(h || 0, m || 0, s || 0);
-    setDateEnd(newDate);
+
+    if (!dateBegin) return;
+
+    const newDate = new Date(dateBegin);
+
+    newDate.setHours(
+      Number.isNaN(h) ? 0 : h,
+      Number.isNaN(m) ? 0 : m,
+      Number.isNaN(s) ? 0 : s,
+      0
+    );
+
+    setDateBegin(newDate);
   };
 
-  const { trigger, data: logProxyData, isMutating } = useSWRMutation(dateBegin && dateEnd ? `${BackendUrlBase}/log-stats-proxy?from=${dateBegin.toISOString()}&to=${dateEnd.toISOString()}` : `${BackendUrlBase}/log-stats-proxy`, fetchSWR);
+  const url =
+    dateBegin && dateEnd
+      ? `${BackendUrlBase}/log-stats-proxy?from=${encodeURIComponent(
+          dateBegin.toISOString()
+        )}&to=${encodeURIComponent(dateEnd.toISOString())}`
+      : `${BackendUrlBase}/log-stats-proxy`;
+
+  const {
+    data: logProxyData,
+    isLoading,
+  } = useSWR(
+    url,
+    fetchSWR
+  );
+
+  const dataChart = logProxyData?.data?.reduce(
+    (acc: any, item: any) => {
+      const service = item.service || "unknown";
+      const existing = acc.find(([name]: [string, number]) => name === service);
+      
+      if (existing) {
+        existing[1] += item.request_count;
+      } else {
+        acc.push([service, item.request_count]);
+      }
+      
+      return acc;
+    },
+    [] as Array<[string, number]>
+  );
 
   return (
     <div className="flex-1 flex-col gap-8 md:flex">
@@ -279,8 +394,8 @@ export default function LogManagement() {
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex flex-row gap-2">
-            <Label htmlFor="time-from">Date Start</Label>
+          <div className="flex flex-row gap-2 items-start">
+            <Label htmlFor="time-from" className="pt-2">Date Start</Label>
             <Popover open={openBegin} onOpenChange={setOpenBegin}>
               <PopoverTrigger asChild>
                 <Button
@@ -324,8 +439,8 @@ export default function LogManagement() {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex flex-row gap-2">
-            <Label htmlFor="time-from">Date End</Label>
+          <div className="flex flex-row gap-2 items-start">
+            <Label htmlFor="time-from" className="pt-2">Date End</Label>
             <Popover open={openEnd} onOpenChange={setOpenEnd}>
               <PopoverTrigger asChild>
                 <Button
@@ -369,16 +484,19 @@ export default function LogManagement() {
               </PopoverContent>
             </Popover>
           </div>
-          <Button type="button" variant="outline" onClick={() => {
+          <div className="flex-1 justify-center">
+            <ChartPieInfo data={dataChart} />
+          </div>
+          {/* <Button type="button" variant="outline" onClick={() => {
             if (dateBegin && dateEnd) {
               trigger()
             }
           }} disabled={!dateBegin || !dateEnd}>
             <RefreshCcw />
             Reload
-          </Button>
+          </Button> */}
         </div>
-        {isMutating ? <TableSkeleton /> : <DataTable rowIdKey="path" columns={columns} data={logProxyData?.data ?? []} canExpand={true} DetailRow={DetailLogProxy} detailRowProps={{ dateBegin, dateEnd }} />}
+        {isLoading ? <TableSkeleton /> : <DataTable rowIdKey="path" columns={columns} data={logProxyData?.data ?? []} canExpand={true} DetailRow={DetailLogProxy} detailRowProps={{ dateBegin, dateEnd }} />}
       </div>
     </div>
   )

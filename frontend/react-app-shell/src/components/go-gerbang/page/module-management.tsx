@@ -91,7 +91,6 @@ function FormModule({
   data?: TDetailModule
   moduleType?: string
 }) {
-  console.log(indexData)
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({

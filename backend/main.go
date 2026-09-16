@@ -73,7 +73,7 @@ func main() {
 	app := fiber.New(fiber.Config{
 		JSONEncoder:       json.Marshal,
 		JSONDecoder:       json.Unmarshal,
-		BodyLimit:         5 * 1024 * 1024, // this is the default limit of 5MB
+		BodyLimit:         50 * 1024 * 1024, // this is the default limit of 50MB
 		ServerHeader:      appName,
 		AppName:           appName,
 		CaseSensitive:     true,
@@ -166,7 +166,7 @@ func main() {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 
-	fmt.Println("✅ server running " + config.APP_PORT)
+	fmt.Println("[INFO] Server running " + config.APP_PORT)
 	if err := app.Listen(config.APP_PORT, fiber.ListenConfig{
 		EnablePrefork:         false,
 		DisableStartupMessage: true,

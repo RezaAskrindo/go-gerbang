@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"go-gerbang/handlers"
-	"go-gerbang/middleware"
 	"go-gerbang/models"
 
 	"go-gerbang/database"
@@ -62,7 +61,7 @@ func MigrationService(c fiber.Ctx) error {
 		&models.Logger{},
 		&models.Configuration{},
 		// FOR RBAC
-		&middleware.CasbinRule{},
+		// &middleware.CasbinRule{},
 	)
 
 	if err != nil {

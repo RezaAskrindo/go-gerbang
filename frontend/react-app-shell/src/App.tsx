@@ -79,7 +79,9 @@ const CaddyManagement = lazy(() => import("@/components/go-gerbang/page/caddy-ma
 const LogManagement = lazy(() => import("@/components/go-gerbang/page/log-management"));
 const ModuleManagement = lazy(() => import("@/components/go-gerbang/page/module-management"));
 const NotificationManagement = lazy(() => import("@/components/go-gerbang/page/notification-management"));
-const RbacManagement = lazy(() => import("@/components/go-gerbang/page/rbac-management"));
+const NotificationMailManagement = lazy(() => import("@/components/go-gerbang/page/notification-mail-management"));
+const NotificationWaManagement = lazy(() => import("@/components/go-gerbang/page/notification-wa-management"));
+// const RbacManagement = lazy(() => import("@/components/go-gerbang/page/rbac-management"));
 const UserManagement = lazy(() => import("@/components/go-gerbang/page/user-management"));
 
 const TeamSwitcher = () => {
@@ -111,7 +113,9 @@ const NavMain = () => {
         {title: "log", url: "#/log"},
         {title: "module backend", url: "#/module-backend"},
         {title: "module frontend", url: "#/module-frontend"},
-        {title: "notification", url: "#/notification"},
+        // {title: "notification", url: "#/notification"},
+        {title: "notification-mail", url: "#/notification-mail"},
+        {title: "notification-wa", url: "#/notification-wa"},
         {title: "user", url: "#/user"},
         // {title: "rbac", url: "#/rbac"},
       ]
@@ -239,7 +243,9 @@ const routes: Record<string, React.ComponentType> = {
   "/module-backend": ModuleManagement,
   "/module-frontend": ModuleManagement,
   "/notification": NotificationManagement,
-  "/rbac": RbacManagement,
+  "/notification-mail": NotificationMailManagement,
+  "/notification-wa": NotificationWaManagement,
+  // "/rbac": RbacManagement,
   "/user": UserManagement,
 };
 
