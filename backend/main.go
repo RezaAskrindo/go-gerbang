@@ -27,11 +27,11 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
-	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"go.uber.org/automaxprocs/maxprocs"
+	// "github.com/gofiber/fiber/v3/middleware/idempotency"
+	// "github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 // NOTE: FOR LOW VPS
@@ -43,7 +43,6 @@ const (
 
 func main() {
 	// runtime.GOMAXPROCS(coreCPU) // change to maxprocs
-
 	if _, err := maxprocs.Set(); err != nil {
 		log.Printf("automaxprocs: %v", err)
 	}
@@ -53,6 +52,7 @@ func main() {
 	}
 
 	debug.SetGCPercent(50)
+	debug.SetMaxStack(memoryLimit << 20)
 
 	logFile, err := os.OpenFile("go-gerbang.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -79,13 +79,15 @@ func main() {
 		CaseSensitive:     true,
 		ProxyHeader:       "X-Forwarded-For",
 		ReduceMemoryUsage: true,
+		// NEW CONFIG
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  30 * time.Second,
 	})
 
-	app.All("/live", healthcheck.New())
-
-	app.Use(idempotency.New(idempotency.Config{
-		Storage: middleware.StorageIdempotency,
-	}))
+	// app.Use(idempotency.New(idempotency.Config{
+	// 	Storage: middleware.StorageIdempotency,
+	// }))
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.GetTrustedOrigins(),
@@ -107,7 +109,7 @@ func main() {
 
 	app.Use(etag.New())
 
-	app.Use(requestid.New())
+	// app.Use(requestid.New())
 
 	app.Use(limiter.New(limiter.Config{
 		Storage: middleware.StorageLimiter,
@@ -138,6 +140,8 @@ func main() {
 	}
 
 	proxyroute.MainProxyRoutes(app)
+
+	app.All("/live", healthcheck.New())
 
 	cb := circuitbreaker.New(circuitbreaker.Config{
 		FailureThreshold: 3,               // Max failures before opening the circuit

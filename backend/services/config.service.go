@@ -2,8 +2,9 @@ package services
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"path/filepath"
+	"strings"
 
 	"go-gerbang/handlers"
 	"go-gerbang/models"
@@ -11,21 +12,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func UpsertConfig(c fiber.Ctx) error {
-	body := new(models.Config)
-
-	if err := handlers.ParseBody(c, &body); err != nil {
-		return handlers.BadRequestErrorResponse(c, err)
-	}
-
-	if err := models.CreatConfig(body).Error; err != nil {
-		return handlers.InternalServerErrorResponse(c, err)
-	}
-
-	return handlers.SuccessResponse(c, true, "success to insert config", body, nil)
-}
-
-// Configuration
 func GetConfigurationByGroup(c fiber.Ctx) error {
 	group := c.Params("group")
 
@@ -107,69 +93,93 @@ func DeleteConfiguration(c fiber.Ctx) error {
 	return handlers.SuccessResponse(c, true, "success to delete config", nil, nil)
 }
 
+type ExecuteScriptQuery struct {
+	Name  string `query:"name"`
+	Index *int   `query:"index"`
+}
+
 func ConfigExecuteScript(c fiber.Ctx) error {
-	config_work_dir := c.Query("work_dir")
-	config_file := c.Query("file")
-	if config_work_dir == "" && config_file == "" {
-		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need config_url params"))
+	group := c.Params("group")
+
+	if group == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need group params"))
 	}
 
-	fullPath := filepath.Join(config_work_dir, config_file)
+	q := new(ExecuteScriptQuery)
+	if err := c.Bind().Query(q); err != nil {
+		return handlers.UnprocessableEntityErrorResponse(c, err)
+	}
 
-	if _, err := os.Stat(fullPath); err != nil {
+	if q.Name == "" {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("missing name param"))
+	}
+
+	whereArgs := []interface{}{
+		"configuration_group = ? AND configuration_name = ?",
+		group, q.Name,
+	}
+
+	if q.Index != nil {
+		whereArgs[0] = whereArgs[0].(string) + " AND configuration_index = ?"
+		whereArgs = append(whereArgs, *q.Index)
+	}
+
+	rows := &[]models.Configuration{}
+	if err := models.FindConfiguration(rows, whereArgs...).Error; err != nil {
+		return handlers.InternalServerErrorResponse(c, err)
+	}
+
+	if len(*rows) == 0 {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("unknown script: %s", q.Name))
+	}
+
+	byIndex := make(map[int]map[string]string)
+	for _, row := range *rows {
+		idx := 0
+		if row.ConfigurationIndex != nil {
+			idx = *row.ConfigurationIndex
+		}
+		if byIndex[idx] == nil {
+			byIndex[idx] = make(map[string]string)
+		}
+		if row.ConfigurationValue != nil {
+			byIndex[idx][row.ConfigurationKey] = *row.ConfigurationValue
+		}
+	}
+
+	if len(byIndex) > 1 {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("ambiguous script %q — pass index", q.Name))
+	}
+
+	var keys map[string]string
+	for _, v := range byIndex {
+		keys = v
+	}
+
+	workDirVal, fileVal := keys["location"], keys["desist"]
+	if workDirVal == "" || fileVal == "" {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("script %q is not fully configured", q.Name))
+	}
+
+	baseFile := strings.TrimSuffix(fileVal, filepath.Ext(fileVal))
+	base := filepath.Join(workDirVal, baseFile)
+
+	scriptPath, workDir, err := handlers.ResolveScriptForOS(base)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "error: file not found",
+			"message": "error: script not found for this OS",
 			"err":     err.Error(),
 		})
 	}
 
-	// Run in background goroutine (non-blocking)
 	go func() {
-		_ = handlers.ExecuteScript(fullPath, config_work_dir)
+		if err := handlers.ExecuteScript(scriptPath, workDir); err != nil {
+			log.Printf("script %q failed: %v", q.Name, err)
+		}
 	}()
 
 	return c.JSON(fiber.Map{
-		"message": "script is execute",
+		"message": "script is executing",
 		"err":     nil,
 	})
 }
-
-// GENERIC OBJECT PARSE
-// func CreateConfiguration(c fiber.Ctx) error {
-// 	group := c.Params("group")
-
-// 	if group == "" {
-// 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need group params"))
-// 	}
-
-// 	config_name := c.Query("config_name")
-// 	config_index := fiber.Query[int](c, "config_index")
-
-// 	var body map[string]interface{}
-// 	if err := handlers.ParseBody(c, &body); err != nil {
-// 		return handlers.BadRequestErrorResponse(c, err)
-// 	}
-
-// 	data := []models.Configuration{}
-// 	for k, v := range body {
-// 		var valPtr *string
-// 		if str, ok := v.(string); ok {
-// 			valPtr = &str
-// 		}
-// 		data = append(data, models.Configuration{
-// 			ConfigurationGroup: group,
-// 			ConfigurationKey:   k,
-// 			ConfigurationValue: valPtr,
-// 			ConfigurationName:  &config_name,
-// 			ConfigurationIndex: &config_index,
-// 		})
-// 	}
-
-// 	count := int64(len(data))
-
-// 	if err := models.CreateConfiguration(data).Error; err != nil {
-// 		return handlers.InternalServerErrorResponse(c, err)
-// 	}
-
-// 	return handlers.SuccessResponse(c, true, "success to insert config "+group, data, &count)
-// }

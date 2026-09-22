@@ -1,40 +1,42 @@
 package notification
 
-import (
-	"encoding/json"
-	"net/http"
-	"testing"
+// Move to OTHER SERVICES
 
-	"go-gerbang/e2e/helpers"
+// import (
+// 	"encoding/json"
+// 	"net/http"
+// 	"testing"
 
-	"github.com/stretchr/testify/assert"
-)
+// 	"go-gerbang/e2e/helpers"
 
-func TestEmailResendSuccess(t *testing.T) {
-	client := helpers.NewClient()
+// 	"github.com/stretchr/testify/assert"
+// )
 
-	to := "rezaoda@gmail.com"
-	appName := "SISKOR" // must be registered in GetApiResendKey
-	provider := "Resend"
+// func TestEmailResendSuccess(t *testing.T) {
+// 	client := helpers.NewClient()
 
-	url := helpers.BaseURL() +
-		"/check-mail?to=" + to +
-		"&appName=" + appName +
-		"&provider=" + provider
+// 	to := "rezaoda@gmail.com"
+// 	appName := "SISKOR" // must be registered in GetApiResendKey
+// 	provider := "Resend"
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	assert.NoError(t, err)
+// 	url := helpers.BaseURL() +
+// 		"/check-mail?to=" + to +
+// 		"&appName=" + appName +
+// 		"&provider=" + provider
 
-	resp, err := client.Do(req)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+// 	req, err := http.NewRequest(http.MethodGet, url, nil)
+// 	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+// 	resp, err := client.Do(req)
+// 	assert.NoError(t, err)
+// 	defer resp.Body.Close()
 
-	var apiRes helpers.APIResponse
-	err = json.NewDecoder(resp.Body).Decode(&apiRes)
-	assert.NoError(t, err)
+// 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	assert.True(t, apiRes.Status)
-	assert.Equal(t, "Check Mail Success", apiRes.Message)
-}
+// 	var apiRes helpers.APIResponse
+// 	err = json.NewDecoder(resp.Body).Decode(&apiRes)
+// 	assert.NoError(t, err)
+
+// 	assert.True(t, apiRes.Status)
+// 	assert.Equal(t, "Check Mail Success", apiRes.Message)
+// }

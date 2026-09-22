@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -159,7 +160,13 @@ func handleS3Upload(
 		_ = file.Close()
 
 		if err != nil {
-			return fmt.Errorf("upload %s: %w", objectName, err)
+			// Surface MinIO/S3's actual error code+message instead of a
+			// generic wrapped error — this is what tells you WHY a given
+			// object name was rejected (bad signature from a proxy that
+			// re-normalized the URL, invalid key, etc.) rather than just
+			// that it was.
+			errResp := minio.ToErrorResponse(err)
+			return fmt.Errorf("upload %s failed [%s]: %s", objectName, errResp.Code, errResp.Message)
 		}
 	}
 
@@ -334,7 +341,6 @@ func pruneS3Backups(
 	return nil
 }
 
-// NOTE: HIGH SECURITY
 func HandleFileUpload(c fiber.Ctx) error {
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -417,15 +423,70 @@ func HandleFileUpload(c fiber.Ctx) error {
 func getRelativePath(fh *multipart.FileHeader) string {
 	cd := fh.Header.Get("Content-Disposition")
 
-	re := regexp.MustCompile(`filename="([^"]+)"`)
-	match := re.FindStringSubmatch(cd)
-	if len(match) > 1 {
-		path := filepath.ToSlash(match[1])
-		path = strings.TrimPrefix(path, "/")
-		return path
+	// mime.ParseMediaType understands both the plain filename="..."
+	// form and the RFC 2231/5987 filename*=UTF-8''... form that clients
+	// fall back to for names containing characters outside the basic
+	// quoted-string grammar (e.g. brackets, non-ASCII). A hand-rolled
+	// regex matching only the first form will silently miss the second
+	// and fall back to fh.Filename, dropping any embedded relative path.
+	if cd != "" {
+		if _, params, err := mime.ParseMediaType(cd); err == nil {
+			if name, ok := params["filename"]; ok && name != "" {
+				return strings.TrimPrefix(filepath.ToSlash(name), "/")
+			}
+		}
 	}
 
-	return fh.Filename
+	return strings.TrimPrefix(filepath.ToSlash(fh.Filename), "/")
+}
+
+// neverExecutableExts is checked FIRST and always wins: config/data files
+// must never get the exec bit no matter what folder they land in or what
+// OS this runs on. This covers your .env (godotenv), and config/rbac
+// files (config.json, model.conf, etc.).
+var neverExecutableExts = map[string]bool{
+	".env":  true,
+	".json": true,
+	".conf": true,
+	".yaml": true,
+	".yml":  true,
+	".ini":  true,
+	".toml": true,
+}
+
+// shouldMarkExecutable decides, per target OS, whether an uploaded file
+// should get the exec bit — based only on its extension, never on
+// anything else about the upload. This is deliberately conservative:
+// it still trusts the client-supplied filename to classify the file
+// (e.g. calling something "restart.sh"), so this endpoint must remain
+// restricted to trusted/authenticated deployers. It is NOT a substitute
+// for that — it only prevents a plain data/config upload from ever
+// becoming executable by accident.
+func shouldMarkExecutable(relativePath string) bool {
+	ext := strings.ToLower(filepath.Ext(relativePath))
+
+	if neverExecutableExts[ext] {
+		return false
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows ignores Unix permission bits for executability — it's
+		// determined by the extension itself (.exe, .bat, .cmd, .ps1),
+		// which the OS enforces on its own. Nothing for us to grant.
+		return false
+	default: // linux, darwin, and other unix-likes
+		switch ext {
+		case ".sh":
+			return true // restart/deploy scripts
+		case ".exe":
+			return false // a Windows binary has no business executing here
+		case "":
+			return true // Go binaries are typically extensionless on unix
+		default:
+			return false
+		}
+	}
 }
 
 func saveFileNoExec(file *multipart.FileHeader, dst string) error {
@@ -435,13 +496,9 @@ func saveFileNoExec(file *multipart.FileHeader, dst string) error {
 	}
 	defer src.Close()
 
-	ext := filepath.Ext(dst) // "" if no extension, e.g. ".exe", ".txt"
-
-	var perm os.FileMode
-	if ext == "" || strings.EqualFold(ext, ".exe") || strings.EqualFold(ext, ".sh") {
-		perm = 0755 // rwxr-xr-x — executable
-	} else {
-		perm = 0644 // rw-r--r-- — not executable
+	perm := os.FileMode(0644) // rw-r--r-- — not executable by default
+	if shouldMarkExecutable(dst) {
+		perm = 0755 // rwxr-xr-x
 	}
 
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)

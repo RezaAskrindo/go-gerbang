@@ -339,31 +339,31 @@ func StringPtr(s string) *string {
 // 	return string(output), err
 // }
 
-func ExecuteScript(scriptPath, workDir string) error {
-	var cmd *exec.Cmd
+// func ExecuteScript(scriptPath, workDir string) error {
+// 	var cmd *exec.Cmd
 
-	if runtime.GOOS == "windows" {
-		// Windows: use cmd.exe
-		cmd = exec.Command("cmd.exe", "/C", scriptPath)
-		cmd.Dir = workDir
-	} else {
-		// Linux/Unix: use bash
-		cmd = exec.Command("bash", scriptPath)
-		cmd.Dir = workDir
-	}
+// 	if runtime.GOOS == "windows" {
+// 		// Windows: use cmd.exe
+// 		cmd = exec.Command("cmd.exe", "/C", scriptPath)
+// 		cmd.Dir = workDir
+// 	} else {
+// 		// Linux/Unix: use bash
+// 		cmd = exec.Command("bash", scriptPath)
+// 		cmd.Dir = workDir
+// 	}
 
-	// Load environment from .env
-	cmd.Env = os.Environ()
+// 	// Load environment from .env
+// 	cmd.Env = os.Environ()
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		// Log error (you can send to your logging service)
-		log.Printf("Script execution error: %v\nOutput: %s\n", err, string(output))
-		return err
-	}
+// 	output, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		// Log error (you can send to your logging service)
+// 		log.Printf("Script execution error: %v\nOutput: %s\n", err, string(output))
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func ExtractEmailAddrs(listEmail types.ListEmail) []string {
 	var emailAddrs []string
@@ -371,4 +371,47 @@ func ExtractEmailAddrs(listEmail types.ListEmail) []string {
 		emailAddrs = append(emailAddrs, email.EmailAddr)
 	}
 	return emailAddrs
+}
+
+func ResolveScriptForOS(base string) (scriptPath, workDir string, err error) {
+	var candidate string
+	switch runtime.GOOS {
+	case "windows":
+		if _, statErr := os.Stat(base + ".ps1"); statErr == nil {
+			candidate = base + ".ps1"
+		} else if _, statErr := os.Stat(base + ".bat"); statErr == nil {
+			candidate = base + ".bat"
+		} else {
+			return "", "", fmt.Errorf("no .ps1 or .bat found for %s", base)
+		}
+	default: // linux, darwin
+		candidate = base + ".sh"
+		if _, statErr := os.Stat(candidate); statErr != nil {
+			return "", "", statErr
+		}
+	}
+	return candidate, filepath.Dir(candidate), nil
+}
+
+func ExecuteScript(scriptPath, workDir string) error {
+	var cmd *exec.Cmd
+
+	switch strings.ToLower(filepath.Ext(scriptPath)) {
+	case ".sh":
+		cmd = exec.Command("/bin/sh", scriptPath)
+	case ".ps1":
+		cmd = exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+	case ".bat", ".cmd":
+		cmd = exec.Command("cmd", "/C", scriptPath)
+	default:
+		return fmt.Errorf("unsupported script type: %s", scriptPath)
+	}
+
+	cmd.Dir = workDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, output)
+	}
+	log.Printf("script %s output: %s", scriptPath, output)
+	return nil
 }

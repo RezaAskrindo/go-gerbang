@@ -16,41 +16,38 @@ var baseConfig = basicauth.Config{
 }
 
 func MainRoutes(app *fiber.App) {
-	// GET CSRF TOKEN
-	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
-	app.Get("/secure-gateway-c-cookie", middleware.CsrfProtectionCookies, services.GetCSRFTokenService)
-	// PROTECT
-	app.Get("/test-protect", middleware.Auth, services.ProtectService)
-
 	app.Get("/check-migration", services.CheckMigrationStatus)
-	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)
-	app.Post("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
-
-	app.Get("/info", services.InfoService)
-
-	app.Get("/check-local-service", services.CheckLocalService)
-	app.All("/proxy-local-service", services.ProxyLocalService)
-
-	app.Get("/Configuration/execute", services.ConfigExecuteScript)
-	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
-	app.Post("/Configuration", services.UpsertConfiguration)
-	app.Delete("/Configuration/:group", services.DeleteConfiguration)
-
-	// PUB / SUB
-	app.Post("/publish", services.PublishService)
-	// app.Get("/subscribe", services.SubscribeService) // Not use anymore?
-
-	// MAIL
-	// app.Get("/check-mail", services.MailTesting) // Not use anymore?
-
-	// SERVICE
-	app.Post("/restart", services.RestartHandler)
-	app.Post("/config-file", services.HandleConfigFile)
-	app.Post("/upload-file", services.HandleFileUpload)
 
 	app.Get("/log-stats-proxy", services.GetStatsLogger)
 	app.Get("/metrics", monitor.New(monitor.Config{APIOnly: true}))
 
-	// services.SubscribeServiceEmail()
+	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
+
+	app.Post("/publish", services.PublishService)
 	services.SubscribeEvent()
+
+	// GET CSRF TOKEN
+	app.Get("/secure-gateway-c", middleware.CsrfProtection, services.IndexService)
+	app.Get("/secure-gateway-c-cookie", middleware.CsrfProtectionCookies, services.GetCSRFTokenService)
+
+	// AUTH BASE
+	app.Get("/migration", basicauth.New(baseConfig), services.MigrationService)
+	app.Post("/migration-admin", basicauth.New(baseConfig), services.MigrateAdminUser)
+
+	// SERVICE AUTH with JWT
+	app.Get("/test-protect", middleware.Auth, services.ProtectService)
+
+	app.Get("/info", middleware.CsrfProtection, middleware.Auth, services.InfoService)
+
+	app.Get("/check-local-service", middleware.CsrfProtection, middleware.Auth, services.CheckLocalService)
+	app.All("/proxy-local-service", middleware.CsrfProtection, middleware.Auth, services.ProxyLocalService)
+
+	app.Post("/restart", middleware.CsrfProtection, middleware.Auth, services.RestartHandler)
+	app.Post("/config-file", middleware.CsrfProtection, middleware.Auth, services.HandleConfigFile)
+
+	app.Post("/upload-file", middleware.Auth, services.HandleFileUpload)
+
+	app.Get("/Configuration/:group/execute", middleware.CsrfProtection, middleware.Auth, services.ConfigExecuteScript)
+	app.Post("/Configuration", middleware.CsrfProtection, middleware.Auth, services.UpsertConfiguration)
+	app.Delete("/Configuration/:group", middleware.CsrfProtection, middleware.Auth, services.DeleteConfiguration)
 }

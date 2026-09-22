@@ -15,7 +15,6 @@ import (
 	"go-gerbang/models"
 	"go-gerbang/types"
 
-	// fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
@@ -27,11 +26,6 @@ func MainProxyRoutes(app *fiber.App) {
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
-
-	// err = middleware.InitCasbin()
-	// if err != nil {
-	// 	log.Fatalf("Error loading Casbin: %v", err)
-	// }
 
 	handlers.MapMicroServiceMutex.Lock()
 	handlers.MapMicroService = cfg
@@ -157,7 +151,8 @@ func handleProxyError(c fiber.Ctx, service types.Service, method, path string, e
 		userField = zap.String("user", user.Username)
 	}
 
-	handlers.ZapLogger.Error(service.Service,
+	handlers.ZapLogger.Error("",
+		zap.String("service", service.Service),
 		zap.String("method", method),
 		zap.String("path", path),
 		zap.Int("status", fiber.StatusBadGateway),

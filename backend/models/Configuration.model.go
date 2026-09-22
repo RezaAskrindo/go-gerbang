@@ -83,11 +83,20 @@ func ParseConfiguration(configs *[]Configuration) interface{} {
 		}
 	}
 
+	// ConfigurationValue is nullable in the DB; dereferencing it directly
+	// panics on a null row. Treat null as empty instead.
+	valueOf := func(c Configuration) string {
+		if c.ConfigurationValue == nil {
+			return ""
+		}
+		return *c.ConfigurationValue
+	}
+
 	if !hasIndex {
 		result := make(map[string]string)
 
 		for _, c := range *configs {
-			result[c.ConfigurationKey] = *c.ConfigurationValue
+			result[c.ConfigurationKey] = valueOf(c)
 		}
 
 		return result
@@ -102,7 +111,7 @@ func ParseConfiguration(configs *[]Configuration) interface{} {
 			grouped[idx] = make(map[string]string)
 		}
 
-		grouped[idx][c.ConfigurationKey] = *c.ConfigurationValue
+		grouped[idx][c.ConfigurationKey] = valueOf(c)
 	}
 
 	indexes := make([]int, 0, len(grouped))
