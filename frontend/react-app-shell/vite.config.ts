@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from "@tailwindcss/vite"
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 import federation from '@originjs/vite-plugin-federation'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig({
   plugins: [
@@ -23,7 +24,8 @@ export default defineConfig({
         './ThemeProvider': './src/components/theme-provider.tsx',
       },
       shared: ['react']
-    })
+    }),
+    basicSsl()
   ],
   resolve: {
     alias: {
@@ -32,12 +34,16 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // @ts-ignore
+    https: true,
     proxy: {
       '/backend': {
         // target: 'http://localhost:9000',
         target: 'https://gateway.siskor.web.id',
         changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/backend/, ''),
+        secure: true,
+        cookieDomainRewrite: 'localhost',
+        rewrite: (path: string) => path.replace(/^\/backend/, '')
       },
     },
   },

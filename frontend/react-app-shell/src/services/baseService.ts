@@ -4,7 +4,8 @@ const env = import.meta.env;
 // export const BackendUrlBase = "http://localhost:9000";
 export const BackendUrlBase = "/backend";
 
-const FrontendUrl = env.DEV ? "http://localhost:3000" : window.location.origin;
+// const FrontendUrl = env.DEV ? "http://localhost:3000" : window.location.origin;
+const FrontendUrl = env.DEV ? "https://localhost:3000" : window.location.origin;
 // export const BackendUrlBase = "http://localhost:9000";
 // export const FrontendUrl = "http://localhost:5173";
 

@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch";
 
-import { BackendUrlBase } from "@/services/baseService";
+import { BackendUrlBase, FetchCsrfToken } from "@/services/baseService";
 
 import MetricsInfoSkeleton from "./metrics-info-skeleton";
 import { fetchSWR, SWRDashboardConfig } from "@/services/use-swr-service";
@@ -69,15 +69,32 @@ const CircuitBreaker = () => {
 
   const handleRestart = async () => {
     toast.promise(
-      fetch(`${BackendUrlBase}/restart`, {
-        method: "POST",
-        credentials: "include",
-      }).then(async (res) => {
-        if (!res.ok) throw new Error("Request failed")
-        const data = await res.json()
-        if (!data.status) throw new Error(data.message || "Failed to login")
-        return data
-      }),
+      (async () => {
+        const getCsrf = await FetchCsrfToken();
+        
+        const res = await fetch(`${BackendUrlBase}/restart`, {
+          method: "POST",
+          credentials: "include",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-SGCsrf-Token": getCsrf
+          },
+        });
+        
+        if (!res.ok) throw new Error("Request failed");
+        const data = await res.json();
+        if (!data.status) throw new Error(data.message || "Failed to login");
+        return data;
+      })(),
+      // fetch(`${BackendUrlBase}/restart`, {
+      //   method: "POST",
+      //   credentials: "include",
+      // }).then(async (res) => {
+      //   if (!res.ok) throw new Error("Request failed")
+      //   const data = await res.json()
+      //   if (!data.status) throw new Error(data.message || "Failed to login")
+      //   return data
+      // }),
       {
         loading: "Waiting...",
         success: () => {
@@ -219,17 +236,35 @@ const ServicesInfo = () => {
 
   const handleUpdate = () => {
     toast.promise(
-      fetch(`${BackendUrlBase}/config-file`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({services: listInfoData}),
-      }).then(async (res) => {
-        if (!res.ok) throw new Error("Request failed")
-        const data = await res.json()
-        if (!data.status) throw new Error(data.message || "Failed to login")
-        return data
-      }),
+      (async () => {
+        const getCsrf = await FetchCsrfToken();
+        
+        const res = await fetch(`${BackendUrlBase}/config-file`, {
+          method: "POST",
+          credentials: "include",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-SGCsrf-Token": getCsrf
+          },
+          body: JSON.stringify({services: listInfoData}),
+        });
+        
+        if (!res.ok) throw new Error("Request failed");
+        const data = await res.json();
+        if (!data.status) throw new Error(data.message || "Failed to login");
+        return data;
+      })(),
+      // fetch(`${BackendUrlBase}/config-file`, {
+      //   method: "POST",
+      //   credentials: "include",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({services: listInfoData}),
+      // }).then(async (res) => {
+      //   if (!res.ok) throw new Error("Request failed")
+      //   const data = await res.json()
+      //   if (!data.status) throw new Error(data.message || "Failed to login")
+      //   return data
+      // }),
       {
         loading: "Waiting...",
         success: async () => {
