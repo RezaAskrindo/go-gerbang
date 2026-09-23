@@ -91,40 +91,47 @@ var CsrfActivated = false
 var CsrfContextKey = "token_csrf"
 var CsrfHeaderName = "X-SGCsrf-Token"
 
-var CsrfProtection = csrf.New(csrf.Config{
-	Next: func(c fiber.Ctx) bool {
-		return CsrfActivated
-	},
-	// TODO: migrate KeyLookup: "header:" + CsrfHeaderName
-	CookieName:        "csrf_header",
-	CookieSameSite:    config.CookieSameSite,
-	CookieSecure:      config.SecureCookies,
-	CookieHTTPOnly:    false,
-	CookieSessionOnly: true,
-	IdleTimeout:       config.CsrfTimeCache,
-	ErrorHandler: func(c fiber.Ctx, err error) error {
-		// ERROR ON REFERER CHECKING
-		// https://docs.gofiber.io/api/middleware/csrf#referer-checking
-		switch err {
-		case csrf.ErrTokenNotFound:
-			log.Println("Error CSRF: Token not found")
-		case csrf.ErrTokenInvalid:
-			log.Println("Error CSRF: Token invalid")
-		default:
-			log.Printf("Error CSRF: %v\n", err)
-		}
-		tokenHeader := c.Get("X-SGCsrf-Token")
-		tokenCookie := c.Cookies("csrf_header")
-		log.Printf("Debug — Header: %q, Cookie: %q\n", tokenHeader, tokenCookie)
-		return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF validation failed"))
-	},
-	Extractor: extractors.FromHeader(CsrfHeaderName),
-	KeyGenerator: func() string {
-		return handlers.RandomStringV1(32)
-	},
-	Session:        CsrfStore,
-	TrustedOrigins: config.GetTrustedOrigins(),
-})
+var CsrfProtection fiber.Handler
+
+func InitCSRF() fiber.Handler {
+	CsrfProtection = csrf.New(csrf.Config{
+		Next: func(c fiber.Ctx) bool {
+			return CsrfActivated
+		},
+		// TODO: migrate KeyLookup: "header:" + CsrfHeaderName
+		CookieName:        "csrf_header",
+		CookieSameSite:    config.CookieSameSite,
+		CookieSecure:      config.SecureCookies,
+		CookieHTTPOnly:    false,
+		CookieSessionOnly: true,
+		IdleTimeout:       config.CsrfTimeCache,
+		ErrorHandler: func(c fiber.Ctx, err error) error {
+			// ERROR ON REFERER CHECKING
+			// https://docs.gofiber.io/api/middleware/csrf#referer-checking
+			switch err {
+			case csrf.ErrTokenNotFound:
+				log.Println("Error CSRF: Token not found")
+			case csrf.ErrTokenInvalid:
+				log.Println("Error CSRF: Token invalid")
+			default:
+				log.Printf("Error CSRF: %v\n", err)
+			}
+			tokenHeader := c.Get("X-SGCsrf-Token")
+			tokenCookie := c.Cookies("csrf_header")
+			log.Printf("Debug — Header: %q, Cookie: %q\n", tokenHeader, tokenCookie)
+			log.Printf("Debug — TrustedOrigins in use: %#v\n", config.GetTrustedOrigins())
+			log.Printf("Debug — Request Origin header: %q\n", c.Get("Origin"))
+			return handlers.ForbiddenErrorResponse(c, fmt.Errorf("CSRF validation failed"))
+		},
+		Extractor: extractors.FromHeader(CsrfHeaderName),
+		KeyGenerator: func() string {
+			return handlers.RandomStringV1(32)
+		},
+		Session:        CsrfStore,
+		TrustedOrigins: config.GetTrustedOrigins(),
+	})
+	return CsrfProtection
+}
 
 var CsrfStore = session.NewStore(session.Config{
 	IdleTimeout:    config.CsrfTimeCache,                     // Expire sessions after 30 minutes of inactivity

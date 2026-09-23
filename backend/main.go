@@ -129,6 +129,8 @@ func main() {
 
 	app.Use(earlydata.New())
 
+	middleware.InitCSRF()
+
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.Send([]byte("Welcome to GO GERBANG API GATEWAY - by Muhammad Reza"))
 	})
