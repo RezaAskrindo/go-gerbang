@@ -340,11 +340,6 @@ export default function CaddyManagement() {
 
   const { data, isLoading, mutate } = useSWR(`${BackendUrlBase}/check-local-service?url=http://localhost:2019/config&getRes=true`, fetchSWR);
 
-  // const [dataForm, setDataFrom] = useState();
-
-  // const caddyConfig = transformCaddyConfig(data?.apps?.http?.servers?.srv0 ?? [])
-
-  // console.log(data)
   const currectDataCaddy = transformCaddyConfig(data?.apps?.http?.servers?.srv0);
   const [caddyConfig, setCaddyConfig] = useState<FlatCaddyConfig>();
 
@@ -433,6 +428,8 @@ export default function CaddyManagement() {
     setApplyState(true);
 
     const PORT_CADDY = ENV_STATUS.MODE === "development" ? [":2001"] : [":443", ":80"];
+    // FOR PROXY TO GATEWAY
+    // const PORT_CADDY = [":443", ":80"];
 
     let getAllCaddyConfig = currectDataCaddy;
     if (caddyConfig) {
@@ -451,6 +448,7 @@ export default function CaddyManagement() {
     const listTlsHosts = parseConfig?.routes?.flatMap(el =>
       el.match?.flatMap(elem => elem?.host ?? [] ) ?? []
     );
+    const uniqueHosts = [...new Set(listTlsHosts)];
     
     const appendixForm = ENV_STATUS.MODE === "development" ? {
       pki: { // FOR LOCALHOST DEV
@@ -463,10 +461,18 @@ export default function CaddyManagement() {
     } : {
       tls: { // FOR TLS PRODUCTION
         certificates: {
-          automate: listTlsHosts
+          automate: uniqueHosts
         }
       }
     };
+    // FOR PROXY TO GATEWAY
+    // const appendixForm ={
+    //   tls: {
+    //     certificates: {
+    //       automate: uniqueHosts
+    //     }
+    //   }
+    // };
 
     const oldDataCaddy = data?.apps?.http?.servers?.srv0 ?? {}
 
@@ -487,30 +493,34 @@ export default function CaddyManagement() {
       }
     };
 
-    // console.log(payload)
+    console.log(payload)
 
-    const getCsrf = await FetchCsrfToken();
+    try {
+      const getCsrf = await FetchCsrfToken();
+  
+      const response = await fetch(`${BackendUrlBase}/proxy-local-service?url=http://localhost:2019/load`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-SGCsrf-Token": getCsrf },
+        body: JSON.stringify(payload),
+      });
 
-    const response = await (await fetch(`${BackendUrlBase}/proxy-local-service?url=http://localhost:2019/config`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", "X-SGCsrf-Token": getCsrf },
-      body: JSON.stringify(payload),
-    })).json();
+      if (!response.ok) throw new Error(response.statusText || "Apply Config Failed");
 
-    // console.log(response);
-
-    if (response.status) {
+      const data = await response.json();
+      console.log(data);
+      
       mutate();
-      toast.success("Success Apply Configuration");
-    } else {
-      toast.error("Failed to Apply Configuration");
-    }
-
-    // setTimeout(() => {
       setApplyState(false);
-    // }, 1000);
-    setCaddyConfig(undefined);
+      setCaddyConfig(undefined);
+      toast.success("Apply Config Success");
+    } catch (err) {
+      setApplyState(false);
+      // setCaddyConfig(undefined);
+      console.error("Apply Config error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Apply Config failed: " + errorMessage);
+    }
   }
 
   return (
@@ -525,11 +535,11 @@ export default function CaddyManagement() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={applyState ? () => console.log("") : applyConfig} variant="destructive" disabled={applyState}>
+          {caddyConfig ? <Button onClick={applyState ? () => console.log("") : applyConfig} variant="destructive" disabled={applyState}>
             {applyState ? <Spinner /> : <Send /> }
             {applyState ? "Loading..." : "Apply" }
-            {caddyConfig ? <Badge variant="secondary">1</Badge> : null}
-          </Button>
+            <Badge variant="secondary">1</Badge>
+          </Button> : null}
           <Button onClick={() => {setOpenSheet(true);setCaddyConfig(undefined)}} variant="outline">
             <Plus />
             Setup

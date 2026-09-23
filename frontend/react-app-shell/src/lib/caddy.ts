@@ -110,7 +110,8 @@ export function transformCaddyConfig(config: CaddyConfig): FlatCaddyConfig[] {
 
     // Look for the exact pair reverseTransformCaddyConfig produces for an S3
     // app: [match+reverse_proxy route] immediately followed by
-    // [rewrite+reverse_proxy route, no match], both hitting the same host.
+    // [rewrite+reverse_proxy route, host-only match (or no match, for
+    // backwards-compat with pre-fix configs)], both hitting the same host.
     // Merge them back into ONE flat row instead of two.
     if (host && hasMatch(route) && !hasRewrite(route)) {
       const next = routes[idx + 1];
@@ -147,49 +148,6 @@ export function transformCaddyConfig(config: CaddyConfig): FlatCaddyConfig[] {
   }
 
   return result;
-  // if (!config?.routes) {
-  //   return [];
-  // }
-
-  // return config.routes.map((route: any, index: number) => {
-  //   const result: FlatCaddyConfig = {
-  //     i: index,
-  //     rewrite_uri: undefined,
-  //     rewrite_strip_path_prefix: undefined,
-  //     file_server: undefined,
-  //     reverse_proxy: undefined,
-  //     match_host: undefined,
-  //     match_path: undefined
-  //   };
-
-  //   // Process handlers
-  //   if (route.handle && Array.isArray(route.handle)) {
-  //     route.handle.forEach((handler: any) => {
-  //       if (handler.handler === 'rewrite') {
-  //         if (handler.uri) result.rewrite_uri = handler.uri;
-  //         if (handler.strip_path_prefix) result.rewrite_strip_path_prefix = handler.strip_path_prefix;
-  //       } else if (handler.handler === 'file_server') {
-  //         result.file_server = handler.root;
-  //       } else if (handler.handler === 'reverse_proxy') {
-  //         result.reverse_proxy = handler.upstreams?.[0]?.dial;
-  //       }
-  //     });
-  //   }
-
-  //   // Process match rules
-  //   if (route.match && Array.isArray(route.match)) {
-  //     route.match.forEach((matchRule: any) => {
-  //       if (matchRule.host) {
-  //         result.match_host = matchRule.host[0];
-  //       }
-  //       if (matchRule.path) {
-  //         result.match_path = matchRule.path[0];
-  //       }
-  //     });
-  //   }
-
-  //   return result;
-  // });
 }
 
 export function reverseTransformCaddyConfig(flatArray: FlatCaddyConfig[], listen: string[] = [":443"]): CaddyConfig {
@@ -202,7 +160,14 @@ export function reverseTransformCaddyConfig(flatArray: FlatCaddyConfig[], listen
       rows.push({ ...item, rewrite_uri: undefined, rewrite_strip_path_prefix: undefined });
     }
     if (item.rewrite_uri) {
-      rows.push({ ...item, match_path: undefined, match_host: undefined });
+      // FIX: previously this also cleared `match_host`, which produced a
+      // route with NO match block at all - i.e. an unconditional catch-all
+      // that swallows every host's requests before later routes (other
+      // apps/domains) ever get evaluated. The fallback/rewrite route must
+      // still be scoped to this item's host; only `match_path` should be
+      // dropped here, since the rewrite should apply to every path under
+      // that host, not just the asset path(s) matched by the row above.
+      rows.push({ ...item, match_path: undefined });
     }
 
     // host set but neither match_* nor rewrite_uri given - don't silently drop it

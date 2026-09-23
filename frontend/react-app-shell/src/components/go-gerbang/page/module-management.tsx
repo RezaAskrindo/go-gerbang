@@ -66,6 +66,7 @@ type TDetailModule = {
   url?: string
   use_s3?: boolean
   s3_config?: string
+  index?: number
 }
 
 const formSchema = z.object({
@@ -253,6 +254,8 @@ function FormModule({
     const response = await res.json();
 
     if (response.status && droppedFiles.length) {
+      // const getNewCsrf = await FetchCsrfToken();
+
       const uploadData = new FormData();
       if (values.use_s3 && encodedConfig) {
         uploadData.append("s3_config", encodedConfig);
@@ -263,13 +266,15 @@ function FormModule({
       });
 
       try {
-        const response = await fetch(`${BackendUrlBase}/upload-file`, {
+        const uploadResponse = await fetch(`${BackendUrlBase}/upload-file`, {
           method: "POST",
           body: uploadData,
+          // credentials: "include",
+          // headers: { "X-SGCsrf-Token": getCsrf },
         });
 
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Upload failed");
+        const result = await uploadResponse.json();
+        if (!uploadResponse.ok) throw new Error(result.message || "Upload failed");
         setDroppedFiles([]);
         // toast.success(result.message || "Upload successful");
         toast.success("Succes Save Module");
@@ -277,7 +282,8 @@ function FormModule({
       } catch (err) {
         console.error("Upload error:", err);
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        alert("Upload failed: " + errorMessage);
+        // alert("Upload failed: " + errorMessage);
+        toast.error("Upload failed: " + errorMessage);
       }
     }
     
@@ -509,7 +515,10 @@ export default function ModuleManagement() {
 
   const { data: moduleConfig, mutate } = useConfiguration("MODULE_CONFIG");
 
-  const filterModule = moduleConfig?.data?.filter((el: TDetailModule) => el.module_type === getModule);
+  const filterModule = moduleConfig?.data?.map((el: any, i: number) => ({
+    ...el,
+    index: i
+  })).filter((el: TDetailModule) => el.module_type === getModule);
 
   useEffect(() => {
     if (!openDialog) {
@@ -519,9 +528,9 @@ export default function ModuleManagement() {
   }, [openDialog, mutate]);
 
   
-  const RunScript = (work_dir: string, file: string) => {
+  const RunScript = (group: string, name: string, index: number) => {
     toast.promise(
-      fetch(`${BackendUrlBase}/Configuration/execute?work_dir=${work_dir}&file=${file}`).then(async (res) => {
+      fetch(`${BackendUrlBase}/Configuration/${group}/execute?name=${name}&index=${index}`).then(async (res) => {
         if (!res.ok) throw new Error("Request failed")
         const data = await res.json()
         if (!data.status) throw new Error(data.message || "Failed to Execute")
@@ -530,6 +539,7 @@ export default function ModuleManagement() {
       {
         loading: "Waiting...",
         success: () => {
+          mutate();
           return "Success Execute"
         },
         error: (err) => {
@@ -582,7 +592,7 @@ export default function ModuleManagement() {
             <DropdownMenuContent align="end" className="w-32">
               <DropdownMenuItem onClick={() => {setOpenDialog(true);setDataFrom(module)}}>Edit</DropdownMenuItem>
               {/* {module.execution && <DropdownMenuItem onClick={() => RunScript(module.location, module.execution as string)}>Start</DropdownMenuItem>} */}
-              {module.desist && <DropdownMenuItem onClick={() => RunScript(module.location, module.desist as string)}>Restart</DropdownMenuItem>}
+              {module.desist && <DropdownMenuItem onClick={() => RunScript("MODULE_CONFIG", module.module_name, module.index as number)}>Restart</DropdownMenuItem>}
               <DropdownMenuSeparator />          
               <DropdownMenuItem onClick={() => {setOpenAlert(true);setDataFrom(module)}} variant="destructive">
                 Delete
