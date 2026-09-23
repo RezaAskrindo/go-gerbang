@@ -73,7 +73,7 @@ func FindGroupConfiguration(dest interface{}, conds ...interface{}) *gorm.DB {
 	return database.GDB.Model(&Configuration{}).Group("configuration_group, configuration_name").Find(dest, conds...)
 }
 
-func ParseConfiguration(configs *[]Configuration) interface{} {
+func ParseConfiguration(configs *[]Configuration, useId bool) interface{} {
 	hasIndex := false
 
 	for _, c := range *configs {
@@ -97,6 +97,9 @@ func ParseConfiguration(configs *[]Configuration) interface{} {
 
 		for _, c := range *configs {
 			result[c.ConfigurationKey] = valueOf(c)
+			if useId {
+				result[c.ConfigurationKey+"_id"] = c.IdConfiguration.String()
+			}
 		}
 
 		return result
@@ -112,6 +115,9 @@ func ParseConfiguration(configs *[]Configuration) interface{} {
 		}
 
 		grouped[idx][c.ConfigurationKey] = valueOf(c)
+		if useId {
+			grouped[idx][c.ConfigurationKey+"_id"] = c.IdConfiguration.String()
+		}
 	}
 
 	indexes := make([]int, 0, len(grouped))

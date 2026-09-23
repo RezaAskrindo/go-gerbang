@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -208,10 +210,51 @@ func CheckLocalService(c fiber.Ctx) error {
 	return handlers.SuccessResponse(c, true, "url is active", true, nil)
 }
 
+type proxyRule struct {
+	Methods map[string]bool
+	Paths   map[string]bool // exact-match paths; nil/empty = any path
+}
+
+var allowedProxyTargets = map[string]proxyRule{
+	"localhost:2019": {
+		Methods: map[string]bool{
+			"GET":  true,
+			"POST": true,
+		},
+		Paths: map[string]bool{
+			"/config/": true,
+			"/load":    true, // replace config wholesale — the only mutating path allowed
+		},
+	},
+}
+
+func isProxyTargetAllowed(host, method, path string) bool {
+	rule, ok := allowedProxyTargets[host]
+	if !ok {
+		return false
+	}
+	if !rule.Methods[strings.ToUpper(method)] {
+		return false
+	}
+	if len(rule.Paths) > 0 && !rule.Paths[path] {
+		return false
+	}
+	return true
+}
+
 func ProxyLocalService(c fiber.Ctx) error {
 	urlQuery := c.Query("url")
 	if urlQuery == "" {
 		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need url params"))
+	}
+
+	parsed, err := url.Parse(urlQuery)
+	if err != nil {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("invalid url"))
+	}
+
+	if !isProxyTargetAllowed(parsed.Host, c.Method(), parsed.Path) {
+		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("target not allowed"))
 	}
 
 	body := bytes.NewReader(c.Request().Body())
@@ -245,22 +288,21 @@ func ProxyLocalService(c fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
-	for key, values := range resp.Header {
-		for _, value := range values {
-			c.Response().Header.Add(key, value)
-		}
-	}
-
-	c.Status(resp.StatusCode)
-
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return handlers.SuccessResponse(c, true, "error reading response", false, nil)
 	}
 
+	for key, values := range resp.Header {
+		for _, value := range values {
+			c.Response().Header.Add(key, value)
+		}
+	}
+	c.Status(resp.StatusCode)
+
 	if len(respBody) == 0 {
 		return handlers.SuccessResponse(c, true, "response body is empty", false, nil)
 	}
 
-	return c.SendStream(resp.Body)
+	return c.Send(respBody)
 }

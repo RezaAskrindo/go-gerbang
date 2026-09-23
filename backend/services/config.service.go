@@ -21,9 +21,12 @@ func GetConfigurationByGroup(c fiber.Ctx) error {
 
 	d := &[]models.Configuration{}
 
+	useId := false
+
 	config_name := c.Query("config_name")
 
 	if config_name != "" {
+		useId = true
 		err := models.FindConfiguration(d, "configuration_group = ? AND configuration_name = ?", group, config_name).Error
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
@@ -36,12 +39,18 @@ func GetConfigurationByGroup(c fiber.Ctx) error {
 	}
 
 	if len(*d) > 0 {
-		result := models.ParseConfiguration(d)
+		result := models.ParseConfiguration(d, useId)
 		var count *int64
 		if arr, ok := result.([]map[string]string); ok {
 			c := int64(len(arr))
 			count = &c
 		}
+
+		if useId {
+			parseConfig := fmt.Sprintf("%s-%s", group, config_name)
+			_ = handlers.SaveToRedis(parseConfig, result)
+		}
+
 		return handlers.SuccessResponse(c, true, "success to get config", result, count)
 	}
 

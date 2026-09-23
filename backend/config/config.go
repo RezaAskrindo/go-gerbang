@@ -46,9 +46,6 @@ var SecureCookies = false //change true to prod false to dev
 // var CookieSameSite = "None"
 // var SecureCookies = true //change true to prod false to dev
 
-// SIKA REPOSITORY
-// var SikaRepoURL = Config("SIKA_REPO_URL")
-
 func GetTrustedOrigins() []string {
 	originsStr := Config("TRUSTED_ORIGINS")
 	if originsStr == "" {
