@@ -39,11 +39,10 @@ var SecretKey = Config("SECRET_KEY_APIGATEWAY")
 var CookieKey = Config("KEY_COOKIE_APIGATEWAY")
 
 // DEV
-var CookieSameSite = "Lax"
 var SecureCookies = false //change true to prod false to dev
+var CookieSameSite = "Lax"
 
 // PROD
-// var CookieSameSite = "None"
 // var SecureCookies = true //change true to prod false to dev
 
 func GetTrustedOrigins() []string {

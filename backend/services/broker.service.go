@@ -9,6 +9,7 @@ import (
 	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/handlers"
+	"go-gerbang/models"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/nats-io/nats.go"
@@ -84,7 +85,8 @@ func PublishEvent(subject string, rawData interface{}) {
 
 func SubscribeEvent() {
 	handlers := map[string]nats.MsgHandler{
-		"logger": handlers.HandleLogger,
+		"logger":           handlers.HandleLogger,
+		"users.find_by_id": handleFindById,
 	}
 
 	for subject, handler := range handlers {
@@ -94,4 +96,38 @@ func SubscribeEvent() {
 	}
 
 	// log.Println("Listening for subcribe events...")
+}
+
+type natsResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+	Data    any    `json:"data,omitempty"`
+}
+
+func respond(msg *nats.Msg, success bool, code int, message string, data any) {
+	raw, err := json.Marshal(natsResponse{success, message, code, data})
+	if err != nil {
+		return
+	}
+	_ = msg.Respond(raw)
+}
+
+func handleFindById(msg *nats.Msg) {
+	var req struct {
+		UserId string `json:"user_id"`
+	}
+
+	if err := json.Unmarshal(msg.Data, &req); err != nil || req.UserId == "" {
+		respond(msg, false, 422, "need userId params", nil)
+		return
+	}
+
+	user := new(models.User)
+	if err := models.FindUserById(user, req.UserId); err != nil {
+		respond(msg, false, 404, err.Error(), nil)
+		return
+	}
+
+	respond(msg, true, 200, "success to get users", user)
 }

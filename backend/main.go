@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 	"time"
 
 	"go-gerbang/broker"
@@ -46,7 +48,18 @@ func main() {
 	if _, err := maxprocs.Set(); err != nil {
 		log.Printf("automaxprocs: %v", err)
 	}
-	if _, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithRatio(0.50)); err != nil {
+	_, err := memlimit.Set(
+		memlimit.WithRatio(0.50),
+		memlimit.WithMin(20*1024*1024),
+		memlimit.WithProvider(
+			memlimit.ApplyFallback(
+				memlimit.FromCgroup,
+				memlimit.FromSystem,
+			),
+		),
+	)
+	// _, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithRatio(0.50));
+	if err != nil {
 		debug.SetMemoryLimit(memoryLimit << 20) // change to memlimit
 		log.Printf("automemlimit: %v", err)
 	}
@@ -69,6 +82,7 @@ func main() {
 
 	database.ConnectGormDB()
 	broker.StartingNatsClient()
+	defer broker.NatsClient.Drain()
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder:       json.Marshal,
@@ -173,10 +187,59 @@ func main() {
 	})
 
 	fmt.Println("[INFO] Server running " + config.APP_PORT)
-	if err := app.Listen(config.APP_PORT, fiber.ListenConfig{
-		EnablePrefork:         false,
-		DisableStartupMessage: true,
-	}); err != nil {
-		log.Fatalf("Error starting server: %v", err)
+	// if err := app.Listen(config.APP_PORT, fiber.ListenConfig{
+	// 	EnablePrefork:         false,
+	// 	DisableStartupMessage: true,
+	// }); err != nil {
+	// 	log.Fatalf("Error starting server: %v", err)
+	// }
+
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- app.Listen(config.APP_PORT, fiber.ListenConfig{
+			EnablePrefork:         false, // required — shutdown doesn't work with prefork
+			DisableStartupMessage: true,
+		})
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case <-ctx.Done():
+		log.Println("shutdown signal received, draining...")
+	case err := <-serverErr:
+		stop()
+		natsServer.Shutdown() // don't skip cleanup on the fatal path
+		if err != nil {
+			log.Fatalf("Fiber server failed: %v", err)
+		}
+		return
 	}
+	stop() // restore default signal handling — a second Ctrl+C now force-exits
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+		log.Printf("Fiber shutdown error: %v", err)
+	}
+
+	// Wait for Listen to actually return (it should return nil after shutdown)
+	if err := <-serverErr; err != nil {
+		log.Printf("Listen error after shutdown: %v", err)
+	}
+
+	// NATS shutdown with its own timeout
+	natsDone := make(chan struct{})
+	go func() {
+		natsServer.Shutdown()
+		close(natsDone)
+	}()
+	select {
+	case <-natsDone:
+		log.Println("NATS server stopped")
+	case <-time.After(5 * time.Second):
+		log.Println("NATS shutdown timed out")
+	}
+
+	log.Println("clean shutdown complete")
 }

@@ -11,29 +11,47 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+const (
+	UsernameNats = "go-gerbang"
+	PasswordNats = "G0-gerb@ng-2026"
+)
+
 func StartingNatsServer() (*server.Server, error) {
 	natsServer, err := server.NewServer(&server.Options{
-		Host: "0.0.0.0",
-		Port: 9001,
+		ServerName: "Go-Gerbang-Broker",
+		Host:       "0.0.0.0",
+		Port:       9001,
 		// For Low VPS
-		MaxConn:       20,
-		MaxPayload:    64 * 1024, // 64 kb
-		MaxPending:    2 * 1024 * 1024,
+		MaxConn:       50,
+		MaxPayload:    128 * 1024,      // 128 KB
+		MaxPending:    2 * 1024 * 1024, // 2 MB
 		WriteDeadline: 5 * time.Second,
+		// JetStream
+		JetStream:          true,
+		JetStreamMaxMemory: 32 * 1024 * 1024, // 32 MB
+		StoreDir:           "./data",
+		// Auth
+		Username: UsernameNats,
+		Password: PasswordNats,
+		// MQTT
+		// MQTT: server.MQTTOpts{
+		// 	Host: "0.0.0.0",
+		// 	Port: 9002,
+		// 	// Username: UsernameNats,
+		// 	// Password: PasswordNats,
+		// },
 	})
 	if err != nil {
-		log.Printf("failed to create NATS server: %v", err)
 		return nil, fmt.Errorf("failed to create NATS server: %w", err)
 	}
 
 	go natsServer.Start()
 
 	if !natsServer.ReadyForConnections(10 * time.Second) {
-		log.Printf("NATS server failed to start")
+		natsServer.Shutdown()
 		return nil, fmt.Errorf("NATS server failed to start")
 	}
 
-	// fmt.Printf("✅ NATS server running :9001\n")
 	fmt.Printf("[INFO] NATS server running :9001\n")
 
 	return natsServer, nil
@@ -45,7 +63,7 @@ func StartingNatsClient() {
 	serverURL := config.Config("NATS_SERVER_URL")
 
 	var err error
-	NatsClient, err = nats.Connect(serverURL)
+	NatsClient, err = nats.Connect(serverURL, nats.UserInfo(UsernameNats, PasswordNats))
 	if err != nil {
 		log.Printf("Error connecting to NATS server: %v", err)
 	}
