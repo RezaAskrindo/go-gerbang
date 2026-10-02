@@ -20,6 +20,7 @@ func MainRoutes(app *fiber.App) {
 
 	app.Get("/log-stats-proxy", services.GetStatsLogger)
 	app.Get("/metrics", monitor.New(monitor.Config{APIOnly: true}))
+	app.Get("/metrics-jetstream", services.JetStreamMetricsHandler)
 
 	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
 
@@ -50,4 +51,10 @@ func MainRoutes(app *fiber.App) {
 	app.Get("/Configuration/:group/execute", middleware.CsrfProtection, middleware.Auth, services.ConfigExecuteScript)
 	app.Post("/Configuration", middleware.CsrfProtection, middleware.Auth, services.UpsertConfiguration)
 	app.Delete("/Configuration/:group", middleware.CsrfProtection, middleware.Auth, services.DeleteConfiguration)
+
+	g := app.Group("/jetstream", middleware.CsrfProtection, middleware.Auth)
+	g.Post("/streams/:stream/purge", services.PurgeStreamHandler)
+	g.Post("/streams/:stream/messages/:seq/retry", services.RetryMessageHandler)
+	g.Delete("/streams/:stream/messages/:seq", services.DeleteMessageHandler)
+	g.Post("/streams/:stream/consumers/:consumer/reset", services.ResetConsumerHandler)
 }

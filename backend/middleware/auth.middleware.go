@@ -375,3 +375,42 @@ func GenerateCaptcha(c fiber.Ctx) error {
 
 	return output
 }
+
+// Store OTP to Redis
+func StoreOTPSession(userId string, otp string) error {
+	redisKey := "otp:" + userId
+	// Store the full OTP (with embedded expiry)
+	return database.RedisDb.Set(database.RedisCtx, redisKey, otp, 10*time.Minute).Err()
+}
+
+// Get OTP from Redis
+func GetOTPSession(userId string) (string, error) {
+	redisKey := "otp:" + userId
+	return database.RedisDb.Get(database.RedisCtx, redisKey).Result()
+}
+
+// Verify OTP code
+func VerifyOTP(userId string, inputCode string) (bool, error) {
+	otp, err := GetOTPSession(userId)
+
+	if err != nil {
+		return false, fmt.Errorf("OTP not found or expired")
+	}
+
+	// Validate OTP not expired
+	if !handlers.IsOTPValid(otp) {
+		database.RedisDb.Del(database.RedisCtx, "otp:"+userId)
+		return false, fmt.Errorf("OTP expired")
+	}
+
+	// Extract code and compare
+	storedCode := handlers.GetOTPCode(otp)
+
+	if storedCode == inputCode {
+		// Delete OTP after successful verification
+		database.RedisDb.Del(database.RedisCtx, "otp:"+userId)
+		return true, nil
+	}
+
+	return false, fmt.Errorf("Invalid OTP code")
+}

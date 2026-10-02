@@ -54,25 +54,38 @@ func Signup(c fiber.Ctx) error {
 	}
 
 	sendNotification := fiber.Query[bool](c, "notif")
-	providerNotification := c.Query("provider")
-	querySender := c.Query("sender")
+	accountId := c.Query("account")
+	// providerNotification := c.Query("provider")
+	// querySender := c.Query("sender")
 	sendPass := fiber.Query[bool](c, "sendPass")
 
-	if sendNotification && providerNotification != "" {
-		QueueUserInformation(providerNotification, querySender, user, sendPass)
+	if sendNotification {
+		QueueUserInformation(&accountId, user, sendPass)
 	}
 
 	return handlers.SuccessResponse(c, true, "Success Create User", nil, nil)
 }
 
+func getMainDomain(host string) string {
+	if idx := strings.Index(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+
+	parts := strings.Split(host, ".")
+
+	if len(parts) <= 2 || host == "localhost" {
+		return host
+	}
+
+	return strings.Join(parts[len(parts)-2:], ".")
+}
+
 func Login(c fiber.Ctx) error {
-	captcha := fiber.Query[bool](c, "captcha")
-	block := fiber.Query[bool](c, "block")
-	session := fiber.Query[bool](c, "session")
-	httponly := fiber.Query[bool](c, "httponly")
-	domain := c.Query("domain")
-	validate_ip := fiber.Query[bool](c, "validate_ip")
-	single_login := fiber.Query[bool](c, "single_login")
+	query := new(types.LoginQuery)
+
+	if err := c.Bind().Query(query); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
 
 	input := new(types.LoginInput)
 
@@ -84,7 +97,7 @@ func Login(c fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(err)
 	}
 
-	if captcha { // CAPTCHA QUERY
+	if query.Captcha { // CAPTCHA QUERY
 		sess, err := middleware.CaptchaStore.Get(c)
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
@@ -120,13 +133,13 @@ func Login(c fiber.Ctx) error {
 	if !handlers.CheckPasswordHash(password, user.PasswordHash) {
 		u.LoginAttempts = user.LoginAttempts + 1
 		u.LoginIp = c.IP()
-		if block { // BLOCK Query
+		if query.Block { // BLOCK Query
 			if user.LoginAttempts >= 3 {
 				models.BlockUser(user.IdAccount)
 				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("you're account has block, you're already fill wrong password 3 time"))
 			} else {
 				models.UpdateUser(user.IdAccount, u)
-				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("%s", "wrong password, you have "+strconv.Itoa(4-(int(u.LoginAttempts)))+" chances left"))
+				return handlers.UnauthorizedErrorResponse(c, fmt.Errorf("%s", "wrong password, you have "+strconv.Itoa(4-int(u.LoginAttempts))+" chances left"))
 			}
 		} else {
 			if user.PasswordHash == "" && user.IsGoogleAccount == 10 {
@@ -142,7 +155,44 @@ func Login(c fiber.Ctx) error {
 		models.UpdateUser(user.IdAccount, u)
 	}
 
-	randString := handlers.RandomString(32)
+	if query.OTP {
+		userID := user.IdAccount
+		numberType := "number"
+		otpCode, _ := handlers.GenerateOTP(6, &numberType)
+
+		err := middleware.StoreOTPSession(userID.String(), otpCode)
+		if err != nil {
+			return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to save otp!"))
+		}
+
+		accID := config.Config("WA_ACCOUNT_ID")
+		if query.AccountID != nil && *query.AccountID != "" {
+			accID = *query.AccountID
+		}
+		target := "6285724416179"
+		if query.Destination != nil && *query.Destination != "" {
+			target = *query.Destination
+		}
+
+		parts := strings.Split(otpCode, "_")
+		codePart := parts[0]
+		message := fmt.Sprintf("Here your OTP Code: %s, Please don't share to anyone!", codePart)
+
+		payload := map[string]interface{}{
+			"account_id": accID,
+			"to":         target,
+			"message":    message,
+		}
+		PublishEvent(WaPublishEventName, payload)
+
+		return handlers.SuccessResponse(c, true, "Please enter OTP code", fiber.Map{
+			"user_id":      userID,
+			"requires_otp": true,
+			"otp_type":     "totp",
+		}, nil)
+	}
+
+	randString := handlers.RandomStringV1(24) // Will output ~32 characters
 
 	user_data := handlers.SendSafeUserData(user, randString)
 
@@ -150,14 +200,14 @@ func Login(c fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	if session { // SESSION QUERY
-		err := middleware.SaveUserSession(c, user_data, single_login) // SINGLE LOGIN
+	if query.Session { // SESSION QUERY
+		err := middleware.SaveUserSession(c, user_data, query.SingleLogin) // SINGLE LOGIN
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
 	}
 
-	if validate_ip { // VALIDATE IP QUERY
+	if query.ValidateIp { // VALIDATE IP QUERY
 		errValidate := handlers.ValidateUserLoginIp(user_data, c)
 		if errValidate != nil {
 			return handlers.SuccessResponse(c, true, errValidate.Error(), user_data, nil)
@@ -174,34 +224,16 @@ func Login(c fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, err)
 	}
 
-	if httponly { // HTTPONLY QUERY
+	if query.HttpOnly { // HTTPONLY QUERY
+		domain := query.Domain
+
 		if domain == "" {
-			return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need domain params"))
-		} else {
-			middleware.SetAuthCookies(c, domain, refreshToken, token)
-			// c.Cookie(&fiber.Cookie{
-			// 	Name:     middleware.CookieRefreshJWT,
-			// 	Value:    refreshToken,
-			// 	HTTPOnly: true,
-			// 	Secure:   config.SecureCookies,
-			// 	SameSite: "Strict",
-			// 	Expires:  time.Now().Add(config.RefreshAuthTimeCache),
-			// 	Domain:   domain,
-			// })
-
-			// cookie := new(fiber.Cookie)
-			// cookie.Name = middleware.CookieJWT
-			// cookie.Value = "Bearer " + token
-			// cookie.Expires = time.Now().Add(config.AuthTimeCache)
-			// cookie.HTTPOnly = true
-			// cookie.Domain = domain
-			// cookie.Secure = config.SecureCookies
-			// cookie.SameSite = config.CookieSameSite
-			// cookie.SessionOnly = false
-			// c.Cookie(cookie)
-
-			return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user_data, nil)
+			domain = getMainDomain(c.Host())
 		}
+
+		middleware.SetAuthCookies(c, domain, refreshToken, token)
+
+		return handlers.SuccessResponse(c, true, "Success Login for domain:"+domain, user_data, nil)
 	}
 
 	res := fiber.Map{
@@ -279,24 +311,24 @@ func RequestResetPassword(c fiber.Ctx) error {
 		return handlers.BadRequestErrorResponse(c, err)
 	}
 
-	QuerySender := c.Query("sender")
+	// QuerySender := c.Query("sender")
 
-	Sender := "GOGERBANG"
-	if QuerySender != "" {
-		Sender = QuerySender
-	}
+	// Sender := "GOGERBANG"
+	// if QuerySender != "" {
+	// 	Sender = QuerySender
+	// }
 
-	BaseUrl := c.Query("baseUrl")
-	if BaseUrl == "" {
-		return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base baseUrl params"))
-	}
+	// BaseUrl := c.Query("baseUrl")
+	// if BaseUrl == "" {
+	// 	return handlers.UnprocessableEntityErrorResponse(c, fmt.Errorf("need base baseUrl params"))
+	// }
 
 	// rawQuery := c.RequestCtx().URI().QueryString()
 	// queryStr := string(rawQuery)
 
-	sendEmail := new(types.SendingEmailToBroker)
-	sendEmail.Sender = Sender
-	sendEmail.Subject = "Reset Password"
+	// sendEmail := new(types.SendingEmailToBroker)
+	// sendEmail.Sender = Sender
+	// sendEmail.Subject = "Reset Password"
 	// sendEmail.Title = "You are request for reset password"
 	// sendEmail.BodyText = `Hi ` + user.FullName + `
 
@@ -312,16 +344,16 @@ func RequestResetPassword(c fiber.Ctx) error {
 	// 	</div>
 	// 	this link only active in 24 hours`
 	// sendEmail.Footer = "you are receiving this mail from " + Sender
-	sendEmail.Emails = []types.Email{
-		{
-			Name:      user.FullName,
-			EmailAddr: accountEmail,
-		},
-	}
+	// sendEmail.Emails = []types.Email{
+	// 	{
+	// 		Name:      user.FullName,
+	// 		EmailAddr: accountEmail,
+	// 	},
+	// }
 
-	PublishEvent("user.notification", sendEmail)
+	// PublishEvent(EmailPublishEventName, sendEmail)
 
-	return handlers.SuccessResponse(c, true, "Silahkan Cek Email", nil, nil)
+	return handlers.SuccessResponse(c, true, "This feature still under maintenance", nil, nil)
 }
 
 func ResetPassword(c fiber.Ctx) error {
@@ -456,4 +488,68 @@ func RefreshAuth(c fiber.Ctx) error {
 	return handlers.SuccessResponse(c, true, "Refresh token rotated", res, nil)
 }
 
-// fiber:context-methods migrated
+func VerifyOTPAndLogin(c fiber.Ctx) error {
+	req := new(types.VerifyOTPRequest)
+
+	if err := handlers.ParseBody(c, req); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if err := handlers.ValidateStruct(*req); err != nil {
+		return handlers.SuccessResponse(c, false, "error validation", err, nil)
+	}
+
+	user := new(models.User)
+	if err := models.FindUserById(user, req.UserId); err != nil {
+		return handlers.SuccessResponse(c, false, "User not found", nil, nil)
+	}
+
+	// Verify TOTP
+	if req.OTPType == "totp" {
+		isValid, err := handlers.VerifyPassCode(*user.AccessToken, req.OTPCode)
+		if err != nil || !isValid {
+			return handlers.SuccessResponse(c, false, "Invalid TOTP code", nil, nil)
+		}
+	} else {
+		// Fallback to simple OTP verification
+		isValid, verifyErr := middleware.VerifyOTP(req.UserId, req.OTPCode)
+		if !isValid {
+			return handlers.SuccessResponse(c, false, verifyErr.Error(), nil, nil)
+		}
+	}
+
+	// Generate tokens
+	// token, refreshToken := GenerateTokens(user.ID)
+	randString := handlers.RandomStringV1(24)
+	user_data := handlers.SendSafeUserData(user, randString)
+	refreshToken, err := handlers.GenerateTokenJWT(user_data, true)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("failed to generate new refresh token"))
+	}
+
+	token, err := handlers.GenerateTokenJWT(user_data, false)
+	if err != nil {
+		return handlers.InternalServerErrorResponse(c, err)
+	}
+
+	query := new(types.LoginQuery)
+	if err := c.Bind().Query(query); err != nil {
+		return handlers.BadRequestErrorResponse(c, err)
+	}
+
+	if query.HttpOnly {
+		domain := query.Domain
+		if domain == "" {
+			domain = getMainDomain(c.Host())
+		}
+
+		middleware.SetAuthCookies(c, domain, refreshToken, token)
+		return handlers.SuccessResponse(c, true, "Success Login after OTP verification", user, nil)
+	}
+
+	return handlers.SuccessResponse(c, true, "Success Login after OTP verification", fiber.Map{
+		"token":         token,
+		"refresh_token": refreshToken,
+		"user":          user,
+	}, nil)
+}

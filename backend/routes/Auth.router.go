@@ -10,8 +10,6 @@ import (
 func AuthRoutes(app *fiber.App) {
 	auth := app.Group("/api/v1/auth")
 
-	auth.Get("/get-google-client-id", services.LoadGoogleLoginClienId)
-
 	auth.Post("/less-secure/login", middleware.ValidateCaptcha, services.Login)
 	auth.Post("/less-secure/refresh-token", middleware.ValidateCaptcha, services.RefreshAuth)
 	auth.Post("/less-secure/request-reset-password", middleware.ValidateCaptcha, services.RequestResetPassword)
@@ -22,12 +20,12 @@ func AuthRoutes(app *fiber.App) {
 
 	auth.Get("/logout", services.LogoutWeb)
 	auth.Post("/login", middleware.ValidateCaptcha, middleware.CsrfProtection, services.Login)
-	auth.Post("/refresh-token", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RefreshAuth)
-	// auth.Post("/login-with-google", middleware.ValidateCaptcha, middleware.CsrfProtection, services.LoginWithGoogle)
+	auth.Post("/refresh-token", middleware.CsrfProtection, services.RefreshAuth)
+	auth.Post("/login-with-google", services.GoogleOAuthLogin)
 	auth.Post("/request-reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.RequestResetPassword)
-	auth.Post("/reset-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ResetPassword)
-	auth.Post("/change-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ChangePassword)
-	auth.Post("/validate-password", middleware.ValidateCaptcha, middleware.CsrfProtection, services.ValidateUserPasswordById)
+	auth.Post("/reset-password", middleware.CsrfProtection, services.ResetPassword)
+	auth.Post("/change-password", middleware.CsrfProtection, services.ChangePassword)
+	auth.Post("/validate-password", middleware.CsrfProtection, services.ValidateUserPasswordById)
 	auth.Post("/sign-up", middleware.CsrfProtection, services.Signup)
 
 	auth.Get("/get-captcha", middleware.ValidateCaptcha, middleware.GenerateCaptcha)

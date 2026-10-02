@@ -21,16 +21,18 @@ type LoginInput struct {
 	Identity string `json:"identity" validate:"required"`
 	Password string `json:"password" validate:"required"`
 	Captcha  int    `json:"captcha"`
+	OTP      bool   `json:"otp"`
 }
 
-type GoogleLogin struct {
-	IdToken  string `json:"id_token"`
-	ClientId string `json:"client_id"`
-}
+// type GoogleLogin struct {
+// 	IdToken  string `json:"id_token"`
+// 	ClientId string `json:"client_id"`
+// }
 
-type ResetPasswordRequest struct {
-	Identity string `json:"identity" validate:"required"`
-}
+// type ResetPasswordRequest struct {
+// 	Identity string `json:"identity" validate:"required"`
+// }
+
 type ResetPasswordInput struct {
 	Id              string `json:"id"`
 	Password        string `json:"password" validate:"required"`
@@ -72,23 +74,30 @@ type SendingEmailToBroker struct {
 	Emails []Email `json:"emails"`
 }
 
-type ResendKey struct {
-	Sender       string
-	Key          string
-	Email        string
-	ImageElement *string
+type LoginQuery struct {
+	Domain      string  `query:"domain"`
+	Captcha     bool    `query:"captcha"`
+	Block       bool    `query:"block"`
+	Session     bool    `query:"session"`
+	HttpOnly    bool    `query:"httponly"`
+	ValidateIp  bool    `query:"validate_ip"`
+	SingleLogin bool    `query:"single_login"`
+	OTP         bool    `query:"otp"`
+	AccountID   *string `query:"account_id"`
+	Destination *string `query:"to_destination"`
+	// FOR GOOGLE
+	ClientId  string `query:"client_id"`
+	CreateNew bool   `query:"create_new"`
 }
 
-type ListImageEmail struct {
-	Sender       string
-	ImageElement string
+type VerifyOTPRequest struct {
+	UserId  string `json:"user_id" validate:"required"`
+	OTPCode string `json:"otp_code" validate:"required"`
+	OTPType string `json:"otp_type"` // "totp" or "simple"
 }
 
-type SMTPConfig struct {
-	Sender       string
-	SMTPHost     string
-	SMTPPort     int
-	SMTPUser     string
-	SMTPPassword string
-	ImageElement *string
+type ApiInfo struct {
+	Name    string
+	Version string
+	Maker   string
 }

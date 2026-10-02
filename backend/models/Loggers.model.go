@@ -43,18 +43,31 @@ type PathStats struct {
 	RequestCount int64   `json:"request_count"`
 }
 
-func FindStatsLogger(dest *[]PathStats, from, to time.Time) *gorm.DB {
+func FindStatsLogger(dest *[]PathStats, from, to time.Time, groupTime bool) *gorm.DB {
 	query := `
-			SELECT service,
-                method,
-                path,
-                status,
-                AVG(duration)   AS avg_duration,
-                COUNT(*)        AS request_count
-			FROM loggers
-			WHERE timestamp BETWEEN ? AND ?
-			GROUP BY service, method, path, status
-			ORDER BY request_count DESC
+		SELECT `
+
+	if groupTime {
+		query += `DATE_TRUNC('day', timestamp)::date AS date, `
+	}
+
+	query += `service,
+		method,
+		path,
+		status,
+		AVG(duration) AS avg_duration,
+		COUNT(*) AS request_count
+	FROM loggers
+	WHERE timestamp BETWEEN ? AND ?
 	`
+
+	if groupTime {
+		query += ` GROUP BY DATE_TRUNC('day', timestamp), service, method, path, status`
+	} else {
+		query += ` GROUP BY service, method, path, status`
+	}
+
+	query += ` ORDER BY request_count DESC`
+
 	return database.GDB.Raw(query, from, to).Scan(dest)
 }

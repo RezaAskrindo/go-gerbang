@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -15,6 +18,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/pquerna/otp"
+	"github.com/pquerna/otp/totp"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -65,25 +70,112 @@ func IsPasswordResetTokenValid(token string) bool {
 	return nowSec <= intUnixSec+ExpiredReset
 }
 
-func GenerateTOTPToken(token string) string {
-	var time = strconv.FormatInt(int64(TimeNow.UnixMilli()), 10)
+func GenerateTOTPSecret() (string, error) {
+	// Generate 20 bytes for TOTP secret (160 bits)
+	secret := make([]byte, 20)
+	_, err := rand.Read(secret)
+	if err != nil {
+		// return "", fmt.Errorf("failed to generate secret: %w", err)
+		return "", err
+	}
 
-	reset_random := GeneratePasswordHash(token) + "_" + time
-
-	return string(reset_random)
+	// Encode to base32 for TOTP
+	encodedSecret := base32.StdEncoding.EncodeToString(secret)
+	return encodedSecret, nil
 }
 
-func IsTOTPValid(token string) bool {
-	chunks := strings.Split(token, "_")
+// Generate TOTP passcode
+func GeneratePassCode(secret string) (string, error) {
+	passcode, err := totp.GenerateCodeCustom(secret, time.Now(), totp.ValidateOpts{
+		Period:    30,
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA512,
+	})
+	if err != nil {
+		// return "", fmt.Errorf("failed to generate passcode: %w", err)
+		return "", err
+	}
+
+	return passcode, nil
+}
+
+// Verify TOTP passcode
+func VerifyPassCode(secret string, passcode string) (bool, error) {
+	isValid, err := totp.ValidateCustom(passcode, secret, time.Now(), totp.ValidateOpts{
+		Period:    30,
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA512,
+	})
+
+	if err != nil {
+		// return false, fmt.Errorf("failed to verify passcode: %w", err)
+		return false, err
+	}
+
+	return isValid, nil
+}
+
+// Generate OTP with expiry (simplified version using TOTP)
+func GenerateOTP(length int, randomType *string) (string, error) {
+	createdTime := time.Now()
+	expiryTime := createdTime.Add(10 * time.Minute)
+	expiryUnixMilli := expiryTime.UnixMilli()
+	expiryTimeStr := strconv.FormatInt(expiryUnixMilli, 10)
+
+	// Use RandomString for OTP code
+	otpCode, err := RandomString(length, randomType)
+	if err != nil {
+		return "", err
+	}
+
+	return otpCode + "_" + expiryTimeStr, nil
+}
+
+func IsOTPValid(otp string) bool {
+	chunks := strings.Split(otp, "_")
 	if len(chunks) < 2 {
 		return false
 	}
 
-	intUnix, err := strconv.ParseInt(chunks[1], 10, 64)
+	intUnixMilli, err := strconv.ParseInt(chunks[1], 10, 64)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error parsing OTP timestamp: %v", err)
+		return false
 	}
-	return intUnix+ExpiredTOTP >= TimeNow.Unix()
+
+	intUnixSec := intUnixMilli / 1000
+	nowSec := time.Now().Unix()
+
+	// Check if OTP expired (10 minutes validity)
+	return nowSec <= intUnixSec
+}
+
+// Extract OTP code only (without expiry)
+func GetOTPCode(otp string) string {
+	chunks := strings.Split(otp, "_")
+	if len(chunks) > 0 {
+		return chunks[0]
+	}
+	return ""
+}
+
+func EnableTOTP(userId string) (string, string, error) {
+	secret, err := GenerateTOTPSecret()
+	if err != nil {
+		return "", "", err
+	}
+
+	// Generate QR code URL for authenticator apps
+	qrCodeURL := fmt.Sprintf("otpauth://totp/%s?secret=%s&issuer=YourApp", userId, secret)
+
+	// Store secret in database
+	if err := models.UpdateUserTOTPSecret(userId, secret).Error; err != nil {
+		return "", "", err
+	}
+
+	return secret, qrCodeURL, nil
 }
 
 // GOOGLE VALIDATION SIGN IN
@@ -179,30 +271,30 @@ func ValidateUserLoginIp(user_data models.UserData, c fiber.Ctx) error {
 	return nil
 }
 
-func GenerateRefreshToken(user_data models.UserData) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS512)
+// func GenerateRefreshToken(user_data models.UserData) (string, error) {
+// 	token := jwt.New(jwt.SigningMethodHS512)
 
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id_account"] = user_data.IdAccount
-	claims["username"] = user_data.Username
-	claims["email"] = user_data.Email
-	claims["typ"] = "refresh"
-	claims["exp"] = time.Now().Add(7 * 24 * time.Hour).Unix()
+// 	claims := token.Claims.(jwt.MapClaims)
+// 	claims["id_account"] = user_data.IdAccount
+// 	claims["username"] = user_data.Username
+// 	claims["email"] = user_data.Email
+// 	claims["typ"] = "refresh"
+// 	claims["exp"] = time.Now().Add(7 * 24 * time.Hour).Unix()
 
-	claims["jti"] = uuid.New().String()
+// 	claims["jti"] = uuid.New().String()
 
-	t, err := token.SignedString([]byte(config.SecretKey))
-	if err != nil {
-		return "", err
-	}
+// 	t, err := token.SignedString([]byte(config.SecretKey))
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	err = database.RedisDb.Set(database.RedisCtx, "refresh:"+user_data.IdAccount, t, 7*24*time.Hour).Err()
-	if err != nil {
-		return "", err
-	}
+// 	err = database.RedisDb.Set(database.RedisCtx, "refresh:"+user_data.IdAccount, t, 7*24*time.Hour).Err()
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	return t, nil
-}
+// 	return t, nil
+// }
 
 func IsTokenBlacklisted(jti string) bool {
 	val, err := database.RedisDb.Get(database.RedisCtx, "blacklist:"+jti).Result()

@@ -184,7 +184,8 @@ func logProxyRequest(service types.Service, method, path string, status int, dur
 		respLog = zap.String("response_skipped", "binary or large response")
 	}
 
-	handlers.ZapLogger.Info(service.Service,
+	handlers.ZapLogger.Info("",
+		zap.String("service", service.Service),
 		zap.String("method", method),
 		zap.String("path", path),
 		zap.Int("status", status),

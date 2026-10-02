@@ -13,13 +13,16 @@ import (
 	"syscall"
 	"time"
 
+	"go-gerbang/broker"
 	"go-gerbang/config"
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 	"go-gerbang/proxyroute"
+	"go-gerbang/types"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
+	"github.com/nats-io/nats.go"
 )
 
 func IndexService(c fiber.Ctx) error {
@@ -139,6 +142,8 @@ func GetStatsLogger(c fiber.Ctx) error {
 
 	isDetail := fiber.Query[bool](c, "detail")
 
+	isGroup := fiber.Query[bool](c, "group", false)
+
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 
@@ -177,7 +182,7 @@ func GetStatsLogger(c fiber.Ctx) error {
 	} else {
 		d := &[]models.PathStats{}
 
-		err := models.FindStatsLogger(d, from, to).Error
+		err := models.FindStatsLogger(d, from, to, isGroup).Error
 		if err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
@@ -305,4 +310,117 @@ func ProxyLocalService(c fiber.Ctx) error {
 	}
 
 	return c.Send(respBody)
+}
+
+func JetStreamMetricsHandler(c fiber.Ctx) error {
+	js, err := broker.NatsClient.JetStream()
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"error":   "JetStream unavailable",
+			"details": err.Error(),
+		})
+	}
+
+	metrics, err := GetDetailedJetStreamMetrics(js)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "Failed to retrieve metrics",
+			"details": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(metrics)
+}
+
+func GetDetailedJetStreamMetrics(js nats.JetStreamContext) (*types.DetailedMetrics, error) {
+	ai, err := js.AccountInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	m := &types.DetailedMetrics{
+		MemoryUsed:     ai.Memory,
+		StoreUsed:      ai.Store,
+		MaxMemory:      ai.Limits.MaxMemory,
+		MaxStore:       ai.Limits.MaxStore,
+		TotalStreams:   ai.Streams,
+		TotalConsumers: ai.Consumers,
+		Streams:        []types.StreamMetrics{},
+	}
+
+	for si := range js.StreamsInfo() {
+		sm := types.StreamMetrics{
+			Name:      si.Config.Name,
+			Subjects:  si.Config.Subjects,
+			Messages:  si.State.Msgs,
+			Bytes:     si.State.Bytes,
+			FirstSeq:  si.State.FirstSeq,
+			LastSeq:   si.State.LastSeq,
+			Created:   si.Created,
+			Consumers: []types.ConsumerMetrics{},
+		}
+
+		for ci := range js.ConsumersInfo(si.Config.Name) {
+			sm.Consumers = append(sm.Consumers, types.ConsumerMetrics{
+				Name:         ci.Name,
+				Pending:      ci.NumPending,
+				AckPending:   ci.NumAckPending,
+				Redelivered:  ci.NumRedelivered,
+				Waiting:      ci.NumWaiting,
+				DeliveredSeq: ci.Delivered.Stream,
+				AckFloorSeq:  ci.AckFloor.Stream,
+			})
+		}
+
+		sm.Schedules = getScheduleMetrics(js, si)
+
+		m.Streams = append(m.Streams, sm)
+	}
+
+	return m, nil
+}
+
+const maxScheduleScan = 200
+
+func getScheduleMetrics(js nats.JetStreamContext, si *nats.StreamInfo) *types.ScheduleMetrics {
+	out := &types.ScheduleMetrics{Items: []types.ScheduledMessage{}}
+	if si.State.Msgs == 0 {
+		return out
+	}
+
+	full, err := js.StreamInfo(si.Config.Name, &nats.StreamInfoRequest{SubjectsFilter: ">"})
+	if err != nil {
+		return out
+	}
+
+	scanned := 0
+	for subj := range full.State.Subjects {
+		if scanned >= maxScheduleScan {
+			out.Truncated = true
+			break
+		}
+		scanned++
+
+		raw, err := js.GetLastMsg(si.Config.Name, subj)
+		if err != nil {
+			continue
+		}
+		sched := raw.Header.Get("Nats-Schedule")
+		if sched == "" {
+			continue
+		}
+
+		out.Items = append(out.Items, types.ScheduledMessage{
+			Subject:  subj,
+			Seq:      raw.Sequence,
+			Schedule: sched,
+			Target:   raw.Header.Get("Nats-Schedule-Target"),
+			Source:   raw.Header.Get("Nats-Schedule-Source"),
+			TTL:      raw.Header.Get("Nats-Schedule-TTL"),
+			TimeZone: raw.Header.Get("Nats-Schedule-Time-Zone"),
+			Stored:   raw.Time,
+		})
+	}
+	out.Count = len(out.Items)
+	return out
 }

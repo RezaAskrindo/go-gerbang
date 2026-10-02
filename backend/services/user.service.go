@@ -110,8 +110,7 @@ func DeleteUser(c fiber.Ctx) error {
 
 func SendUserInformation(c fiber.Ctx) error {
 	userId := c.Params("userId")
-	providerNotification := c.Query("provider")
-	querySender := c.Query("sender")
+	accountId := c.Query("account")
 	sendPass := fiber.Query[bool](c, "sendPass")
 	password := c.Query("password")
 
@@ -119,7 +118,7 @@ func SendUserInformation(c fiber.Ctx) error {
 		return handlers.InternalServerErrorResponse(c, fmt.Errorf("user Id cannot be null"))
 	}
 
-	if providerNotification != "" {
+	if accountId != "" {
 		user := new(models.User)
 		if err := models.FindUserById(user, userId); err != nil {
 			return handlers.NotFoundErrorResponse(c, err)
@@ -127,14 +126,14 @@ func SendUserInformation(c fiber.Ctx) error {
 
 		user.Password = password
 
-		QueueUserInformation(providerNotification, querySender, user, sendPass)
+		QueueUserInformation(&accountId, user, sendPass)
 		// fmt.Println(providerNotification)
 		// fmt.Println(querySender)
 		// fmt.Println(sendPass)
 		// fmt.Println(user)
 		return handlers.SuccessResponse(c, true, "success to send user information", nil, nil)
 	} else {
-		return handlers.InternalServerErrorResponse(c, fmt.Errorf("provider cannot be null"))
+		return handlers.InternalServerErrorResponse(c, fmt.Errorf("account ID cannot be null"))
 	}
 }
 

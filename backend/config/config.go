@@ -9,6 +9,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	// coreCPU     = 1   // for VCPU is 1
+	MemoryLimit = 128 // for Memory Limit
+	AppName     = "GO Gerbang"
+	VesionApp   = "1.0.3"
+)
+
 // FOR WINDOWS
 var BasePath = "."
 var PathEnv = BasePath + "env"

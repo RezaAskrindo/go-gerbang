@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"go-gerbang/database"
@@ -161,6 +162,18 @@ type LogEventPayload struct {
 // goroutine started by InitLogger (StartLogWorker) is what actually calls
 // database.GDB.Create(&entry) — keeping exactly one writer regardless of how
 // many services are publishing logs concurrently.
+var droppedLogs atomic.Int64
+
+func init() {
+	go func() {
+		for range time.Tick(10 * time.Second) {
+			if n := droppedLogs.Swap(0); n > 0 {
+				fmt.Fprintf(os.Stderr, "log queue full: dropped %d events in last 10s (queue len=%d)\n", n, len(LogQueue))
+			}
+		}
+	}()
+}
+
 func HandleLogger(msg *nats.Msg) {
 	var payload LogEventPayload
 	if err := json.Unmarshal(msg.Data, &payload); err != nil {
@@ -204,7 +217,8 @@ func HandleLogger(msg *nats.Msg) {
 	select {
 	case LogQueue <- entry:
 	default:
-		fmt.Fprintf(os.Stderr, "log queue full, dropping event from %s\n", payload.Service)
+		droppedLogs.Add(1)
+		// fmt.Fprintf(os.Stderr, "log queue full, dropping event from %s\n", payload.Service)
 	}
 }
 

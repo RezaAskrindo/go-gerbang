@@ -93,9 +93,13 @@ func CeneratePasswordResetToken(idAccount interface{}, randomReset string) *gorm
 // 	return database.GDB.Model(&User{}).Where("phone_number = ?", phone_number).Update("access_token", TOTP)
 // }
 
-// func SetNullAccessTokenUser(accountId interface{}) *gorm.DB {
-// 	return database.GDB.Model(&User{}).Select("AccessToken").Where("id_account = ?", accountId).Update("access_token", nil)
-// }
+func UpdateUserTOTPSecret(accountId interface{}, secret string) *gorm.DB {
+	return database.GDB.Model(&User{}).Where("id_account = ?", accountId).Update("access_token", secret)
+}
+
+func SetNullAccessTokenUser(accountId interface{}) *gorm.DB {
+	return database.GDB.Model(&User{}).Select("AccessToken").Where("id_account = ?", accountId).Update("access_token", nil)
+}
 
 func UpdateUser(accountId interface{}, data interface{}) *gorm.DB {
 	return database.GDB.Model(&User{}).Where("id_account = ?", accountId).Updates(data)

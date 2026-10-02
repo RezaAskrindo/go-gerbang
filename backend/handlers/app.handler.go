@@ -58,21 +58,51 @@ func StructToMap(item any) map[string]any {
 	return res
 }
 
-func RandomString(length int) string {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+//	func RandomString(length int) string {
+//		const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+//		b := make([]byte, length)
+//		for i := range b {
+//			idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+//			b[i] = letters[idx.Int64()]
+//		}
+//		return string(b)
+//	}
+func RandomString(length int, randomType *string) (string, error) {
+	// Default to string if type not defined
+	if randomType == nil {
+		defaultType := "string"
+		randomType = &defaultType
+	}
+
+	var charset string
+	switch *randomType {
+	case "number":
+		charset = "0123456789"
+	case "alphanumeric":
+		charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	case "string":
+		fallthrough
+	default:
+		charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	}
+
 	b := make([]byte, length)
 	for i := range b {
-		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		b[i] = letters[idx.Int64()]
+		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", fmt.Errorf("failed to generate random string: %w", err)
+		}
+		b[i] = charset[idx.Int64()]
 	}
-	return string(b)
+
+	return string(b), nil
 }
 
 func RandomStringV1(length int) string {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
-		RandomString(length)
+		RandomString(length, nil)
 	}
 	str := base64.RawURLEncoding.EncodeToString(b)
 	str = strings.ReplaceAll(str, "_", "-")

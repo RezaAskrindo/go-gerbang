@@ -18,6 +18,7 @@ import (
 	"go-gerbang/middleware"
 	"go-gerbang/proxyroute"
 	"go-gerbang/routes"
+	"go-gerbang/services"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/goccy/go-json"
@@ -34,13 +35,6 @@ import (
 	"go.uber.org/automaxprocs/maxprocs"
 	// "github.com/gofiber/fiber/v3/middleware/idempotency"
 	// "github.com/gofiber/fiber/v3/middleware/requestid"
-)
-
-// NOTE: FOR LOW VPS
-const (
-	appName = "GO Gerbang"
-	// coreCPU     = 1   // for VCPU is 1
-	memoryLimit = 128 // for Memory Limit
 )
 
 func main() {
@@ -60,12 +54,12 @@ func main() {
 	)
 	// _, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithRatio(0.50));
 	if err != nil {
-		debug.SetMemoryLimit(memoryLimit << 20) // change to memlimit
+		debug.SetMemoryLimit(config.MemoryLimit << 20) // change to memlimit
 		log.Printf("automemlimit: %v", err)
 	}
 
 	debug.SetGCPercent(50)
-	debug.SetMaxStack(memoryLimit << 20)
+	debug.SetMaxStack(config.MemoryLimit << 20)
 
 	logFile, err := os.OpenFile("go-gerbang.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -88,8 +82,8 @@ func main() {
 		JSONEncoder:       json.Marshal,
 		JSONDecoder:       json.Unmarshal,
 		BodyLimit:         50 * 1024 * 1024, // this is the default limit of 50MB
-		ServerHeader:      appName,
-		AppName:           appName,
+		ServerHeader:      config.AppName,
+		AppName:           config.AppName,
 		CaseSensitive:     true,
 		ProxyHeader:       "X-Forwarded-For",
 		ReduceMemoryUsage: true,
@@ -145,9 +139,10 @@ func main() {
 
 	middleware.InitCSRF()
 
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.Send([]byte("Welcome to GO GERBANG API GATEWAY - by Muhammad Reza"))
-	})
+	// app.Get("/", func(c fiber.Ctx) error {
+	// 	return c.Send([]byte("Welcome to GO GERBANG API GATEWAY - by Muhammad Reza"))
+	// })
+	app.Get("/", services.MainService)
 
 	ctx := context.Background()
 	err = handlers.InitLogger(ctx)
