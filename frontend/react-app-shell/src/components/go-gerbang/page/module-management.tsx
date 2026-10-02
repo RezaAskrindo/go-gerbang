@@ -130,10 +130,8 @@ function FormModule({
     }
   }, [data, openDialog])
 
-  const onDrop = (droppedFiles: File[]) => {  
-    // Handle dropped files (we’ll expand this later)  
-    // console.log('Folder contents:', droppedFiles);
-    setDroppedFiles(droppedFiles);
+  const onDrop = (droppedFiles: File[]) => {
+    setDroppedFiles(droppedFiles as FileWithPath[]);
   };
 
   const { getRootProps, getInputProps } = useDropzone({  
@@ -403,8 +401,8 @@ function FormModule({
                 <div className="text-center">
                   <Files className="mx-auto size-10" />
                   <div className="mt-4 flex justify-center text-sm/6">
-                    <Label htmlFor="file-upload">
-                      <span>{droppedFiles.length > 0 ? `${droppedFiles.length} file(s) selected` : "Click here to Upload"}</span>
+                    <Label htmlFor="file-upload" className="w-40">
+                      <span className="mx-auto">{droppedFiles.length > 0 ? `${droppedFiles.length} file(s) selected` : "Click here to Upload"}</span>
                       <input id="file-upload" name="files" {...getInputProps()} />
                     </Label>
                   </div>
@@ -689,8 +687,8 @@ export default function ModuleManagement() {
         openDialog={openDialog} 
         setOpenDialog={setOpenDialog} 
         data={dataForm} 
-        // indexData={(moduleConfig?.data?.length ?? 1) - 1} 
-        indexData={moduleConfig?.data?.length} 
+        indexData={(moduleConfig?.data?.length ?? 1) - (dataForm ? 1 : 0)} 
+        // indexData={moduleConfig?.data?.length} 
         moduleType={getModule}
       />
       <AlertDialog open={openAlert} onOpenChange={setOpenAlert}>

@@ -89,7 +89,8 @@ type TFormNotificationWa = {
 const formSchema = z.object({
   tenant_id: z.string().min(1, {message: "Tenant is required"}),
   phone: z.string().min(10, {message: "Valid phone number required"}),
-  status: z.enum(["active", "inactive"]),
+  status: z.string().min(1, {message: "Status is required"}),
+  // status: z.enum(["active", "inactive"]),
 });
 
 type TFormNotificationWaSchema = z.infer<typeof formSchema>;
@@ -213,7 +214,6 @@ export function SheetNotificationWaForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="phone"
@@ -239,7 +239,13 @@ export function SheetNotificationWaForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange}>
+                    <Input 
+                        type="text" 
+                        placeholder="created" 
+                        className={cn(field.value && 'border-green-700')}
+                        {...field} 
+                      />
+                    {/* <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className={cn(field.value && 'border-green-700')}>
                           <SelectValue placeholder="Select status" />
@@ -249,7 +255,7 @@ export function SheetNotificationWaForm({
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
                       </SelectContent>
-                    </Select>
+                    </Select> */}
                     <FormMessage />
                   </FormItem>
                 )}
