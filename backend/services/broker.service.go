@@ -138,6 +138,7 @@ func SubscribeEvent() {
 		"users.find_by_identity": handleFindByIdentity,
 		"users.create":           handleCreateUser,
 		"users.update":           handleUpdateUser,
+		"config.find_by_group":   handleFindConfigByGroup,
 	}
 
 	for subject, handler := range handlers {
@@ -211,15 +212,17 @@ func handleFindByIdentity(msg *nats.Msg) {
 
 func handleCreateUser(msg *nats.Msg) {
 	var req struct {
-		Username       string `json:"username"`
-		Email          string `json:"email"`
-		Password       string `json:"password"`
-		PhoneNumber    string `json:"phone_number"`
-		IdentityNumber string `json:"identity_number"`
-		Active         bool   `json:"active"`
-		SendNotif      bool   `json:"send_notif"`
-		SendPass       bool   `json:"send_pass"`
-		AccountId      string `json:"account_id"`
+		Username           string  `json:"username"`
+		FullName           string  `json:"full_name"`
+		Email              string  `json:"email"`
+		Password           *string `json:"password"`
+		PhoneNumber        string  `json:"phone_number"`
+		IdentityNumber     string  `json:"identity_number"`
+		Active             bool    `json:"active"`
+		SendNotif          bool    `json:"send_notif"`
+		SendPass           bool    `json:"send_pass"`
+		AccountId          string  `json:"account_id"`
+		PasswordResetToken bool    `json:"password_reset_token"`
 	}
 
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
@@ -229,8 +232,8 @@ func handleCreateUser(msg *nats.Msg) {
 
 	user := &models.User{
 		Username:       req.Username,
+		FullName:       req.FullName,
 		Email:          req.Email,
-		Password:       req.Password,
 		PhoneNumber:    req.PhoneNumber,
 		IdentityNumber: req.IdentityNumber,
 	}
@@ -249,7 +252,9 @@ func handleCreateUser(msg *nats.Msg) {
 	}
 
 	// Hash password
-	user.PasswordHash = handlers.GeneratePasswordHash(user.Password)
+	if req.Password != nil {
+		user.PasswordHash = handlers.GeneratePasswordHash(*req.Password)
+	}
 
 	// Set account status if active flag is true
 	if req.Active {
@@ -260,6 +265,14 @@ func handleCreateUser(msg *nats.Msg) {
 	if err := models.CreateUser(user); err.Error != nil {
 		respond(msg, false, 409, err.Error.Error(), nil)
 		return
+	}
+
+	if req.PasswordResetToken {
+		randomReset := handlers.GenerateResetRandom(64)
+		if err := models.CeneratePasswordResetToken(user.IdAccount, randomReset).Error; err != nil {
+			respond(msg, false, 409, "Error Generate Reset Token", userExist)
+			return
+		}
 	}
 
 	// Send notification if requested
@@ -421,4 +434,27 @@ func ResetConsumerHandler(c fiber.Ctx) error {
 		return jsErr(c, fiber.StatusInternalServerError, err)
 	}
 	return c.JSON(fiber.Map{"status": "consumer reset"})
+}
+
+func handleFindConfigByGroup(msg *nats.Msg) {
+	var req struct {
+		Group      string `json:"group"`
+		ConfigName string `json:"config_name"`
+	}
+
+	if err := json.Unmarshal(msg.Data, &req); err != nil &&
+		req.Group == "" &&
+		req.ConfigName == "" {
+		respond(msg, false, 422, "need group and config_name params", nil)
+		return
+	}
+
+	config := &[]models.Configuration{}
+	err := models.FindConfiguration(config, "configuration_group = ? AND configuration_name = ?", req.Group, req.ConfigName).Error
+	if err != nil {
+		respond(msg, false, 404, err.Error(), nil)
+		return
+	}
+
+	respond(msg, true, 200, "success to get config", config)
 }

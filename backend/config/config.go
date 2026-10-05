@@ -13,7 +13,7 @@ const (
 	// coreCPU     = 1   // for VCPU is 1
 	MemoryLimit = 128 // for Memory Limit
 	AppName     = "GO Gerbang"
-	VesionApp   = "1.0.3"
+	VesionApp   = "1.0.4"
 )
 
 // FOR WINDOWS
