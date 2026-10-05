@@ -51,11 +51,12 @@ func AuthRoutes(app *fiber.App) {
 	userAssignment.Delete("/:account_id/:auth_role_id", services.DeleteUserAssignment)
 
 	usersApi := app.Group("/users", middleware.CsrfProtection, middleware.Auth)
+	// usersApi := app.Group("/users")
 	usersApi.Get("/all", services.GetAllUser)
 	usersApi.Get("/by-identity", services.FindUserByIdentity)
 	usersApi.Get("/by-id/:userId", services.FindUserById)
 	usersApi.Get("/send-information/:userId", services.SendUserInformation)
-	usersApi.Post("/", middleware.ValidateCaptcha, middleware.CsrfProtection, services.CreateUser)
-	usersApi.Put("/:userId", middleware.ValidateCaptcha, middleware.CsrfProtection, services.UpdateUser)
-	usersApi.Delete("/:userId", middleware.ValidateCaptcha, middleware.CsrfProtection, services.DeleteUser)
+	usersApi.Post("/", middleware.ValidateCaptcha, services.CreateUser)
+	usersApi.Put("/:userId", middleware.ValidateCaptcha, services.UpdateUser)
+	usersApi.Delete("/:userId", middleware.ValidateCaptcha, services.DeleteUser)
 }

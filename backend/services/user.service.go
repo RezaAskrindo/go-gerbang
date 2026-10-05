@@ -2,10 +2,13 @@ package services
 
 import (
 	"fmt"
+	"time"
 
+	"go-gerbang/broker"
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 
+	json "github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -54,6 +57,7 @@ func FindUserByIdentity(c fiber.Ctx) error {
 
 func CreateUser(c fiber.Ctx) error {
 	u := new(models.User)
+	typeInsert := c.Query("type_insert")
 
 	if err := handlers.ParseBody(c, u); err != nil {
 		return handlers.BadRequestErrorResponse(c, err)
@@ -63,11 +67,53 @@ func CreateUser(c fiber.Ctx) error {
 		return handlers.SuccessResponse(c, false, "error validation user", err, nil)
 	}
 
-	if err := models.CreateUser(u).Error; err != nil {
-		return handlers.InternalServerErrorResponse(c, err)
+	if typeInsert == "service-mesh" {
+		reply, err := createUserViaMesh(c, u)
+		if err != nil {
+			return handlers.InternalServerErrorResponse(c, err)
+		}
+		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		return c.Send(reply)
+	} else {
+		if err := models.CreateUser(u).Error; err != nil {
+			return handlers.InternalServerErrorResponse(c, err)
+		}
 	}
 
 	return handlers.SuccessResponse(c, true, "success to create user", u, nil)
+}
+
+func createUserViaMesh(c fiber.Ctx, u *models.User) ([]byte, error) {
+	var password *string
+	if u.Password != "" {
+		password = &u.Password
+	}
+
+	// keys must match the snake_case tags in handleCreateUser's req struct
+	payload := map[string]any{
+		"username":             u.Username,
+		"fullName":             u.FullName,
+		"email":                u.Email,
+		"password":             password,
+		"phoneNumber":          u.PhoneNumber,
+		"identityNumber":       u.IdentityNumber,
+		"active":               fiber.Query[bool](c, "active"),
+		"send_notif":           fiber.Query[bool](c, "notif"),
+		"send_pass":            fiber.Query[bool](c, "sendPass"),
+		"account_id":           c.Query("account"),
+		"password_reset_token": fiber.Query[bool](c, "resetToken"),
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reply, err := broker.NatsClient.Request("users.create", data, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	return reply.Data, nil
 }
 
 func UpdateUser(c fiber.Ctx) error {

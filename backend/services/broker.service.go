@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"go-gerbang/handlers"
 	"go-gerbang/models"
 
+	json "github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 	"github.com/nats-io/nats.go"
 )
@@ -109,16 +109,6 @@ func PublishService(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).SendString("")
 }
 
-// Not use anymore?
-// func SubscribeService(c fiber.Ctx) error {
-// 	subject := "send_mail"
-// 	// broker.NatsClient.Subscribe(subject, func(msg *nats.Msg) {
-// 	// 	fmt.Printf("Received message on %s: %s\n", subject, string(msg.Data))
-// 	// })
-
-// 	return handlers.SuccessResponse(c, true, "on subscribe", subject, nil)
-// }
-
 func PublishEvent(subject string, rawData interface{}) {
 	data, err := json.Marshal(rawData)
 	if err != nil {
@@ -138,6 +128,7 @@ func SubscribeEvent() {
 		"users.find_by_identity": handleFindByIdentity,
 		"users.create":           handleCreateUser,
 		"users.update":           handleUpdateUser,
+		"users.delete":           handleDeleteUser,
 		"config.find_by_group":   handleFindConfigByGroup,
 	}
 
@@ -167,16 +158,16 @@ func respond(msg *nats.Msg, success bool, code int, message string, data any) {
 
 func handleFindById(msg *nats.Msg) {
 	var req struct {
-		UserId string `json:"user_id"`
+		AccountId string `json:"account_id"`
 	}
 
-	if err := json.Unmarshal(msg.Data, &req); err != nil || req.UserId == "" {
+	if err := json.Unmarshal(msg.Data, &req); err != nil || req.AccountId == "" {
 		respond(msg, false, 422, "need userId params", nil)
 		return
 	}
 
 	user := new(models.User)
-	if err := models.FindUserById(user, req.UserId); err != nil {
+	if err := models.FindUserById(user, req.AccountId); err != nil {
 		respond(msg, false, 404, err.Error(), nil)
 		return
 	}
@@ -213,15 +204,15 @@ func handleFindByIdentity(msg *nats.Msg) {
 func handleCreateUser(msg *nats.Msg) {
 	var req struct {
 		Username           string  `json:"username"`
-		FullName           string  `json:"full_name"`
+		FullName           string  `json:"fullName"`
 		Email              string  `json:"email"`
 		Password           *string `json:"password"`
-		PhoneNumber        string  `json:"phone_number"`
-		IdentityNumber     string  `json:"identity_number"`
+		PhoneNumber        string  `json:"phoneNumber"`
+		IdentityNumber     string  `json:"identityNumber"`
 		Active             bool    `json:"active"`
 		SendNotif          bool    `json:"send_notif"`
 		SendPass           bool    `json:"send_pass"`
-		AccountId          string  `json:"account_id"`
+		AccountIdNotif     string  `json:"account_id_notif"`
 		PasswordResetToken bool    `json:"password_reset_token"`
 	}
 
@@ -240,7 +231,10 @@ func handleCreateUser(msg *nats.Msg) {
 
 	// Validate user data
 	if err := handlers.ValidateStruct(*user); err != nil {
-		respond(msg, false, 422, "error validation user", err)
+		respond(msg, false, 422, "error validation user", fiber.Map{
+			"error": err,
+			"user":  user,
+		})
 		return
 	}
 
@@ -277,7 +271,7 @@ func handleCreateUser(msg *nats.Msg) {
 
 	// Send notification if requested
 	if req.SendNotif {
-		QueueUserInformation(&req.AccountId, user, req.SendPass)
+		QueueUserInformation(&req.AccountIdNotif, user, req.SendPass)
 	}
 
 	respond(msg, true, 201, "Success Create User", user)
@@ -286,7 +280,7 @@ func handleCreateUser(msg *nats.Msg) {
 // FORMAT UPDATE USER
 //
 //	{
-//	  "user_id": "12345",
+//	  "account_id": "12345",
 //	  "user": {
 //	    "username": "newusername",
 //	    "email": "newemail@example.com",
@@ -295,8 +289,8 @@ func handleCreateUser(msg *nats.Msg) {
 //	}
 func handleUpdateUser(msg *nats.Msg) {
 	var req struct {
-		UserId string      `json:"user_id"`
-		User   models.User `json:"user"`
+		AccountId string      `json:"account_id"`
+		User      models.User `json:"user"`
 	}
 
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
@@ -304,7 +298,7 @@ func handleUpdateUser(msg *nats.Msg) {
 		return
 	}
 
-	if req.UserId == "" {
+	if req.AccountId == "" {
 		respond(msg, false, 422, "need userId params", nil)
 		return
 	}
@@ -314,7 +308,30 @@ func handleUpdateUser(msg *nats.Msg) {
 		return
 	}
 
-	if err := models.UpdateUser(req.UserId, &req.User).Error; err != nil {
+	if err := models.UpdateUser(req.AccountId, &req.User).Error; err != nil {
+		respond(msg, false, 500, err.Error(), nil)
+		return
+	}
+
+	respond(msg, true, 200, "success to update user", nil)
+}
+
+func handleDeleteUser(msg *nats.Msg) {
+	var req struct {
+		AccountId string `json:"account_id"`
+	}
+
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		respond(msg, false, 422, "invalid request body", nil)
+		return
+	}
+
+	if req.AccountId == "" {
+		respond(msg, false, 422, "need account_id params", nil)
+		return
+	}
+
+	if err := models.HardDeleteUser(req.AccountId); err != nil {
 		respond(msg, false, 500, err.Error(), nil)
 		return
 	}

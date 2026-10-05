@@ -131,18 +131,22 @@ func FindUserById(dest interface{}, idAccount interface{}) error {
 }
 
 func FindUserByIdentity(dest interface{}, username interface{}, email interface{}, phoneNumber interface{}, identityNumber interface{}) error {
-	err := database.GDB.
-		Where("LOWER(users.username) = LOWER(?) OR LOWER(users.email) = LOWER(?) OR users.phone_number = ? OR users.identity_number = ?", username, email, phoneNumber, identityNumber).
-		Preload("UserAssignments").
-		First(dest).Error
-	if err != nil {
-		return err
+	q := database.GDB.Model(&User{}).Where("1 = 0") // start with "nothing"
+
+	if username != "" {
+		q = q.Or("LOWER(users.username) = LOWER(?)", username)
 	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("user is not found")
+	if email != "" {
+		q = q.Or("LOWER(users.email) = LOWER(?)", email)
+	}
+	if phoneNumber != "" {
+		q = q.Or("users.phone_number = ?", phoneNumber)
+	}
+	if identityNumber != "" {
+		q = q.Or("users.identity_number = ?", identityNumber)
 	}
 
-	return nil
+	return q.Preload("UserAssignments").First(dest).Error
 }
 
 func FindUser(dest interface{}, conds ...interface{}) *gorm.DB {
