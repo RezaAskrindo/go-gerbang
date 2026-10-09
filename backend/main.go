@@ -139,9 +139,6 @@ func main() {
 
 	middleware.InitCSRF()
 
-	// app.Get("/", func(c fiber.Ctx) error {
-	// 	return c.Send([]byte("Welcome to GO GERBANG API GATEWAY - by Muhammad Reza"))
-	// })
 	app.Get("/", services.MainService)
 
 	ctx := context.Background()

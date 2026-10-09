@@ -122,18 +122,23 @@ func PublishEvent(subject string, rawData interface{}) {
 }
 
 func SubscribeEvent() {
+	if _, err := broker.NatsClient.Subscribe("logger", handlers.HandleLogger); err != nil {
+		log.Println("Error on subcribe NATS:", err)
+	}
+	if _, err := broker.NatsClient.Subscribe("config.find_by_group", handleFindConfigByGroup); err != nil {
+		log.Println("Error on subcribe NATS:", err)
+	}
+
 	handlers := map[string]nats.MsgHandler{
-		"logger":                 handlers.HandleLogger,
 		"users.find_by_id":       handleFindById,
 		"users.find_by_identity": handleFindByIdentity,
 		"users.create":           handleCreateUser,
 		"users.update":           handleUpdateUser,
 		"users.delete":           handleDeleteUser,
-		"config.find_by_group":   handleFindConfigByGroup,
 	}
 
 	for subject, handler := range handlers {
-		if _, err := broker.NatsClient.Subscribe(subject, handler); err != nil {
+		if _, err := broker.NatsClient.QueueSubscribe(subject, "user-auth", handler); err != nil {
 			log.Println("Error on subcribe NATS:", err)
 		}
 	}
