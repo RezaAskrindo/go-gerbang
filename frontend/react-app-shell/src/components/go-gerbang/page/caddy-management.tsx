@@ -62,6 +62,7 @@ import {
 } from "@/lib/caddy";
 
 import { ComboboxMultipleCreatable } from "../combobox-multiple-creatable";
+import { DragHandle } from "@/components/data-table";
 
 
 const formSchema = z.object({
@@ -100,12 +101,7 @@ const defaultForm: Record<string, Partial<FlatCaddyConfig>> = {
   }
 }
 
-function SheetFormChild({
-  openSheet,
-  dataForm,
-  setOpenSheet,
-  setCaddyConfig,
-}: {
+function SheetFormChild({ openSheet, dataForm, setOpenSheet, setCaddyConfig }: {
   openSheet: boolean
   dataForm?: FlatCaddyConfig
   setOpenSheet?: (data: boolean) => void
@@ -345,6 +341,11 @@ export default function CaddyManagement() {
 
   const columnsDetailCaddy: ColumnDef<FlatCaddyConfig>[] = [
     {
+      id: "drag",
+      header: () => null,
+      cell: ({ row }) => row.original?.i && row.original.i > -1 ? <DragHandle id={row.original.i} /> : null,
+    },
+    {
       accessorKey: "i",
       header: "Type",
       cell: ({ row }) => {
@@ -402,11 +403,7 @@ export default function CaddyManagement() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="data-[state=open]:bg-muted text-muted-foreground flex size-6"
-                size="icon"
-              >
+              <Button variant="ghost" className="data-[state=open]:bg-muted text-muted-foreground flex size-6" size="icon">
                 <EllipsisVertical />
                 <span className="sr-only">Open menu</span>
               </Button>
@@ -422,6 +419,11 @@ export default function CaddyManagement() {
     }
   ];
 
+  const [reorderedData, setReorderedData] = useState<FlatCaddyConfig[] | null>(null);
+  const handleDataReorder = (newOrderedData: FlatCaddyConfig[]) => {
+    setReorderedData(newOrderedData)
+  }
+
   const [applyState, setApplyState] = useState(false);
 
   const applyConfig = async () => {
@@ -431,13 +433,14 @@ export default function CaddyManagement() {
     // FOR PROXY TO GATEWAY
     // const PORT_CADDY = [":443", ":80"];
 
-    let getAllCaddyConfig = currectDataCaddy;
+    let getAllCaddyConfig = reorderedData ?? currectDataCaddy;
+
     if (caddyConfig) {
       if (caddyConfig?.i !== undefined) {
         if (Object.keys(caddyConfig).length > 1) {
           getAllCaddyConfig[caddyConfig?.i] = caddyConfig;
         } else {
-          getAllCaddyConfig = getAllCaddyConfig.slice(0, caddyConfig?.i);
+          getAllCaddyConfig.splice(caddyConfig?.i, 1);
         }
       } else {
         getAllCaddyConfig.push(caddyConfig);
@@ -493,7 +496,7 @@ export default function CaddyManagement() {
       }
     };
 
-    console.log(payload)
+    // console.log(payload)
 
     try {
       const getCsrf = await FetchCsrfToken();
@@ -508,12 +511,13 @@ export default function CaddyManagement() {
       if (!response.ok) throw new Error(response.statusText || "Apply Config Failed");
 
       const data = await response.json();
-      console.log(data);
+      // console.log(data);
       
       mutate();
       setApplyState(false);
       setCaddyConfig(undefined);
-      toast.success("Apply Config Success");
+      setReorderedData(null);
+      toast.success(data?.message ?? "Apply Config Success");
     } catch (err) {
       setApplyState(false);
       // setCaddyConfig(undefined);
@@ -535,7 +539,7 @@ export default function CaddyManagement() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {caddyConfig ? <Button onClick={applyState ? () => console.log("") : applyConfig} variant="destructive" disabled={applyState}>
+          {caddyConfig || reorderedData ? <Button onClick={applyState ? () => console.log("") : applyConfig} variant="destructive" disabled={applyState}>
             {applyState ? <Spinner /> : <Send /> }
             {applyState ? "Loading..." : "Apply" }
             <Badge variant="secondary">1</Badge>
@@ -551,17 +555,14 @@ export default function CaddyManagement() {
           {isLoading ? <p>Loading...</p> : <CardInformation 
             name="Caddy Setup" 
             description="There is list of Caddy for Domain" 
-            rowIdKey="match_host"
-            data={currectDataCaddy}
+            rowIdKey="i"
+            data={reorderedData ?? currectDataCaddy}
             columnsDetail={columnsDetailCaddy}
+            handleDataReorder={handleDataReorder}
           />}
         </div>
       </div>
-      <SheetForm 
-        name="Caddy Form"
-        openSheet={openSheet} 
-        setOpenSheet={setOpenSheet}
-      >
+      <SheetForm  name="Caddy Form" openSheet={openSheet}  setOpenSheet={setOpenSheet} >
         <SheetFormChild 
           openSheet={openSheet}
           dataForm={caddyConfig}
@@ -584,8 +585,7 @@ export default function CaddyManagement() {
             <AlertDialogAction>Cancel</AlertDialogAction>
             <AlertDialogCancel variant="destructive" onClick={() => {
               if (caddyConfig?.i !== undefined) {
-                const { i, ...rest } = caddyConfig;
-                console.log(rest);
+                const { i } = caddyConfig;
                 setCaddyConfig({ i });
               }
             }}>Delete</AlertDialogCancel>

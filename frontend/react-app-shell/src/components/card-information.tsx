@@ -22,6 +22,8 @@ type TCardInformationProps = {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   data?: any[]
   Content?: ComponentType
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  handleDataReorder?: (newData: any[]) => void
 }
 
 export default function CardInformation({
@@ -30,7 +32,8 @@ export default function CardInformation({
   rowIdKey,
   columnsDetail,
   data,
-  Content
+  Content,
+  handleDataReorder
 }: TCardInformationProps) {
   const [openFilter, setOpenFilter] = useState(false)
 
@@ -46,7 +49,7 @@ export default function CardInformation({
         </CardAction>}
       </CardHeader>
       <CardContent>
-        {rowIdKey && columnsDetail && data && <DataTable rowIdKey={rowIdKey} columns={columnsDetail} data={data} useFilter={openFilter} />}
+        {rowIdKey && columnsDetail && data && <DataTable rowIdKey={rowIdKey} columns={columnsDetail} data={data} useFilter={openFilter} onDataReorder={handleDataReorder} />}
         {Content ? <Content /> : null}
       </CardContent>
     </Card>

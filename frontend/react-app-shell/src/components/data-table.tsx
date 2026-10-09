@@ -4,6 +4,8 @@ import {
   type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -129,6 +131,7 @@ interface DataTableProps<TData, TValue> {
   DetailRow?: FC<{ row: TData } & Record<string, unknown>>
   detailRowProps?: Record<string, unknown>
   useFilter?: boolean
+  onDataReorder?: (newData: TData[]) => void
 }
 
 export default function DataTable<TData, TValue>({
@@ -139,6 +142,7 @@ export default function DataTable<TData, TValue>({
   DetailRow,
   detailRowProps={},
   useFilter,
+  onDataReorder,
 }: DataTableProps<TData, TValue>) {
   const [data, setData] = useState<TData[]>(() => initialData)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -153,16 +157,8 @@ export default function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    getRowCanExpand: () => canExpand,
+    getRowId: (row) => String(row[rowIdKey]),
+    enableRowSelection: true,
     state: {
       sorting,
       columnFilters,
@@ -170,6 +166,18 @@ export default function DataTable<TData, TValue>({
       rowSelection,
       pagination
     },
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowCanExpand: () => canExpand,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
   })
 
   const sortableId = useId()
@@ -189,11 +197,15 @@ export default function DataTable<TData, TValue>({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
+      const oldIndex = dataIds.indexOf(active.id)
+      const newIndex = dataIds.indexOf(over.id)
+      const newData = arrayMove(data, oldIndex, newIndex)
+      
+      setData(newData)
+
+      if (onDataReorder) {
+        onDataReorder(newData)
+      }
     }
   }
 
