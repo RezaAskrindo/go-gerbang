@@ -18,10 +18,6 @@ var baseConfig = basicauth.Config{
 func MainRoutes(app *fiber.App) {
 	app.Get("/check-migration", services.CheckMigrationStatus)
 
-	app.Get("/log-stats-proxy", services.GetStatsLogger)
-	app.Get("/metrics", monitor.New(monitor.Config{APIOnly: true}))
-	app.Get("/metrics-jetstream", services.JetStreamMetricsHandler)
-
 	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
 
 	app.Post("/publish", services.PublishService)
@@ -37,6 +33,10 @@ func MainRoutes(app *fiber.App) {
 
 	// SERVICE AUTH with JWT
 	app.Get("/test-protect", middleware.Auth, services.ProtectService)
+
+	app.Get("/log-stats-proxy", middleware.Auth, services.GetStatsLogger)
+	app.Get("/metrics", middleware.Auth, monitor.New(monitor.Config{APIOnly: true}))
+	app.Get("/metrics-jetstream", middleware.Auth, services.JetStreamMetricsHandler)
 
 	app.Get("/info", middleware.CsrfProtection, middleware.Auth, services.InfoService)
 

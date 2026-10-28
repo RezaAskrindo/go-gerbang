@@ -39,6 +39,9 @@ func MainProxyRoutes(app *fiber.App) {
 // NOTE: FOR LOW VPS
 var ProxyClient = &http.Client{
 	Timeout: 20 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
 	Transport: &http.Transport{
 		MaxConnsPerHost:     100,
 		MaxIdleConnsPerHost: 50,

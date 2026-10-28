@@ -30,11 +30,10 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
+	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"go.uber.org/automaxprocs/maxprocs"
-	// "github.com/gofiber/fiber/v3/middleware/idempotency"
-	// "github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 func main() {
@@ -52,7 +51,6 @@ func main() {
 			),
 		),
 	)
-	// _, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithRatio(0.50));
 	if err != nil {
 		debug.SetMemoryLimit(config.MemoryLimit << 20) // change to memlimit
 		log.Printf("automemlimit: %v", err)
@@ -93,9 +91,9 @@ func main() {
 		IdleTimeout:  30 * time.Second,
 	})
 
-	// app.Use(idempotency.New(idempotency.Config{
-	// 	Storage: middleware.StorageIdempotency,
-	// }))
+	app.Use(idempotency.New(idempotency.Config{
+		Storage: middleware.StorageIdempotency,
+	}))
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     config.GetTrustedOrigins(),
