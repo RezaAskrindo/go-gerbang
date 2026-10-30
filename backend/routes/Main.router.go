@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"go-gerbang/handlers"
 	"go-gerbang/middleware"
 	"go-gerbang/services"
 
@@ -15,7 +16,16 @@ var baseConfig = basicauth.Config{
 	},
 }
 
-func MainRoutes(app *fiber.App) {
+func MainRoutes(mainApp *fiber.App) {
+	//
+	// EXCEPT UPLOAD SIZE
+	//
+	mainApp.Post("/upload-file", middleware.Auth, services.HandleFileUpload)
+	mainApp.Post("/config-file", middleware.CsrfProtection, middleware.Auth, services.HandleConfigFile)
+
+	app := mainApp.Group("/")
+	app.Use(handlers.MaxBodySize(3 * 1024 * 1024))
+
 	app.Get("/check-migration", services.CheckMigrationStatus)
 
 	app.Get("/Configuration/:group", services.GetConfigurationByGroup)
@@ -44,9 +54,6 @@ func MainRoutes(app *fiber.App) {
 	app.All("/proxy-local-service", middleware.CsrfProtection, middleware.Auth, services.ProxyLocalService)
 
 	app.Post("/restart", middleware.CsrfProtection, middleware.Auth, services.RestartHandler)
-	app.Post("/config-file", middleware.CsrfProtection, middleware.Auth, services.HandleConfigFile)
-
-	app.Post("/upload-file", middleware.Auth, services.HandleFileUpload)
 
 	app.Get("/Configuration/:group/execute", middleware.CsrfProtection, middleware.Auth, services.ConfigExecuteScript)
 	app.Post("/Configuration", middleware.CsrfProtection, middleware.Auth, services.UpsertConfiguration)

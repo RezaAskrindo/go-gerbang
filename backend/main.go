@@ -25,7 +25,6 @@ import (
 	"github.com/gofiber/contrib/v3/circuitbreaker"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/earlydata"
 	"github.com/gofiber/fiber/v3/middleware/encryptcookie"
 	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
@@ -33,6 +32,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"go.uber.org/automaxprocs/maxprocs"
 )
 
@@ -70,7 +70,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting NATS server: %v", err)
 	}
-	defer natsServer.Shutdown()
 
 	database.ConnectGormDB()
 	broker.StartingNatsClient()
@@ -86,20 +85,43 @@ func main() {
 		ProxyHeader:       "X-Forwarded-For",
 		ReduceMemoryUsage: true,
 		// NEW CONFIG
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		ReadTimeout:     50 * time.Second,
+		WriteTimeout:    50 * time.Second,
+		IdleTimeout:     50 * time.Second,
+		Concurrency:     2048,
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
 	})
 
 	app.Use(idempotency.New(idempotency.Config{
 		Storage: middleware.StorageIdempotency,
+		Next: func(c fiber.Ctx) bool {
+			m := c.Method()
+			return m != fiber.MethodPost
+		},
+		KeyHeader: "Gerbang-Idempotency-Key",
+		Lifetime:  24 * time.Hour,
+	}))
+
+	app.Use(requestid.New(requestid.Config{
+		Header: "Gerbang-Request-ID",
+		Generator: func() string {
+			return "static-id"
+		},
 	}))
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     config.GetTrustedOrigins(),
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Sgcsrf-Token"},
+		AllowOrigins: config.GetTrustedOrigins(),
+		AllowHeaders: []string{
+			"Authorization",
+			"Content-Type",
+			"X-Sgcsrf-Token",
+			"Gerbang-Idempotency-Key",
+			"Gerbang-Request-ID",
+		},
 		AllowCredentials: true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		ExposeHeaders:    []string{"Gerbang-Request-ID", "Retry-After", "ETag", "Location"},
 	}))
 
 	app.Use(helmet.New(helmet.Config{
@@ -115,25 +137,17 @@ func main() {
 
 	app.Use(etag.New())
 
-	// app.Use(requestid.New())
-
 	app.Use(limiter.New(limiter.Config{
-		Storage: middleware.StorageLimiter,
-		Next: func(c fiber.Ctx) bool {
-			return c.IP() == "127.0.0.1" // limit will apply to this IP
-		},
-		Max:        1000,
+		Storage:    middleware.StorageLimiter,
+		Max:        500,
 		Expiration: 60 * time.Second,
 		KeyGenerator: func(c fiber.Ctx) string {
-			// return c.Get("X-forwarded-for")
 			return c.IP()
 		},
 		LimitReached: func(c fiber.Ctx) error {
 			return c.SendString("be slow bro...")
 		},
 	}))
-
-	app.Use(earlydata.New())
 
 	middleware.InitCSRF()
 
@@ -145,14 +159,12 @@ func main() {
 		log.Fatalf("Failed to initialize zap logger: %v", err)
 	}
 
-	proxyroute.MainProxyRoutes(app)
-
 	app.All("/live", healthcheck.New())
 
 	cb := circuitbreaker.New(circuitbreaker.Config{
-		FailureThreshold: 3,               // Max failures before opening the circuit
-		Timeout:          5 * time.Second, // Wait time before retrying
-		SuccessThreshold: 2,               // Required successes to move back to closed state
+		FailureThreshold: 7,
+		Timeout:          15 * time.Second,
+		SuccessThreshold: 4,
 		IsFailure: func(c fiber.Ctx, err error) bool {
 			return c.Response().StatusCode() >= http.StatusInternalServerError
 		},
@@ -164,25 +176,17 @@ func main() {
 	})
 
 	app.Use(circuitbreaker.Middleware(cb))
+
+	proxyroute.MainProxyRoutes(app)
+
 	routes.MainRoutes(app)
 	routes.AuthRoutes(app)
-
-	// For reducing memory and move to caddy
-	// app.Get("/*", static.New("./web"))
-	// SPA fallback — catches everything else
-	// app.Get("*", static.New("./web/index.html"))
 
 	app.Use("*", func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 400, "status": "error", "message": "Not Found Services"})
 	})
 
 	fmt.Println("[INFO] Server running " + config.APP_PORT)
-	// if err := app.Listen(config.APP_PORT, fiber.ListenConfig{
-	// 	EnablePrefork:         false,
-	// 	DisableStartupMessage: true,
-	// }); err != nil {
-	// 	log.Fatalf("Error starting server: %v", err)
-	// }
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -199,13 +203,12 @@ func main() {
 		log.Println("shutdown signal received, draining...")
 	case err := <-serverErr:
 		stop()
-		natsServer.Shutdown() // don't skip cleanup on the fatal path
 		if err != nil {
 			log.Fatalf("Fiber server failed: %v", err)
 		}
 		return
 	}
-	stop() // restore default signal handling — a second Ctrl+C now force-exits
+	stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -213,12 +216,10 @@ func main() {
 		log.Printf("Fiber shutdown error: %v", err)
 	}
 
-	// Wait for Listen to actually return (it should return nil after shutdown)
 	if err := <-serverErr; err != nil {
 		log.Printf("Listen error after shutdown: %v", err)
 	}
 
-	// NATS shutdown with its own timeout
 	natsDone := make(chan struct{})
 	go func() {
 		natsServer.Shutdown()

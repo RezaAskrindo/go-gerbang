@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"go-gerbang/handlers"
 	"go-gerbang/middleware"
 	"go-gerbang/services"
 
@@ -9,6 +10,7 @@ import (
 
 func AuthRoutes(app *fiber.App) {
 	auth := app.Group("/api/v1/auth")
+	auth.Use(handlers.MaxBodySize(3 * 1024 * 1024))
 
 	auth.Post("/less-secure/login", middleware.ValidateCaptcha, services.Login)
 	auth.Post("/less-secure/refresh-token", middleware.ValidateCaptcha, services.RefreshAuth)

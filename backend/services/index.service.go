@@ -17,207 +17,305 @@ func MainService(c fiber.Ctx) error {
 	}
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go Gerbang - API Gateway</title>
+    <meta name="color-scheme" content="dark">
+    <title>%s - API Gateway</title>
     <style>
-        :root {
-          --text: #6b6375;
-          --text-h: #08060d;
-          --bg: #fff;
-          --border: #e5e4e7;
-          --code-bg: #f4f3ec;
-          --accent: #84fc96;
-					--accent-bg: rgba(132, 252, 146, 0.15);
-					--accent-border: rgba(132, 252, 134, 0.5);
-          --social-bg: rgba(244, 243, 236, 0.5);
-          --shadow:
-            rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-          --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-          --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-          --mono: ui-monospace, Consolas, monospace;
-
-          font: 18px/145%% var(--sans);
-          letter-spacing: 0.18px;
-          color-scheme: light dark;
-          color: var(--text);
-          background: var(--bg);
-          font-synthesis: none;
-          text-rendering: optimizeLegibility;
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-        }
-
-        @media (max-width: 1024px) {
-          :root {
-            font-size: 16px;
-          }
-        }
-
-        @media (prefers-color-scheme: dark) {
-          :root {
-            --text: #9ca3af;
-            --text-h: #f3f4f6;
-            --bg: #16171d;
-            --border: #2e303a;
-            --code-bg: #1f2028;
-            --accent: #84fc96;
-            --accent-bg: rgba(132, 252, 146, 0.15);
-            --accent-border: rgba(132, 252, 134, 0.5);
-            --social-bg: rgba(47, 48, 58, 0.5);
-            --shadow:
-              rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-          }
-        }
-
         * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #000000;
+            --bg-rgb: 0 0 0;
+            --text: #ffffff;
+            --text-muted: #a1a1aa;
+            --outline: #128052;
+            --accent: #128052;
+            --accent-rgb: 50 255 170;
+            --border: #1f1f1f;
+            --code-bg: #0a0a0a;
+
+            --hero-fade-mid: 0.4;
+            --hero-fade-end: 100%%;
+
+            --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', 'Helvetica Neue', sans-serif;
+            --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+            color-scheme: dark;
+        }
+
+        html, body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body {
-          margin: 0;
-          padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 64px 24px;
+            text-align: center;
+            overflow-x: hidden;
         }
 
-        h1, h2 {
-          font-family: var(--heading);
-          font-weight: 500;
-          color: var(--text-h);
+        .hero {
+            width: 100%%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+
+        .brand-wrap {
+            position: relative;
+            width: 100%%;
+            max-width: 1000px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .brand-outline {
+            display: block;
+            width: 100%%;
+            height: auto;
+            overflow: visible;
+            color: var(--outline);
+        }
+
+        .brand-fade {
+            position: absolute;
+            top: 0;
+            bottom: -10px;
+            left: -16px;
+            right: -16px;
+            pointer-events: none;
+            background: linear-gradient(
+                to bottom in srgb,
+                rgb(var(--bg-rgb) / 0) 0%%,
+                rgb(var(--bg-rgb) / var(--hero-fade-mid)) 50%%,
+                rgb(var(--bg-rgb) / 1) var(--hero-fade-end)
+            );
+        }
+
+        /* ---- shimmer line ---- */
+        .brand-shimmer {
+            position: absolute;
+            left: 50%%;
+            transform: translateX(-50%%);
+            width: min(70%%, 720px);
+            height: 1px;
+            border-radius: 999px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 2;
+            background: linear-gradient(
+                90deg,
+                transparent 0%%,
+                rgb(var(--accent-rgb) / 0.35) 30%%,
+                rgb(var(--accent-rgb) / 0.65) 50%%,
+                rgb(var(--accent-rgb) / 0.35) 70%%,
+                transparent 100%%
+            );
+            box-shadow:
+                0 0 10px rgb(var(--accent-rgb) / 0.35),
+                0 0 24px rgb(var(--accent-rgb) / 0.15);
+        }
+
+        .brand-shimmer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%%,
+                transparent 35%%,
+                rgba(255, 255, 255, 0.95) 50%%,
+                transparent 65%%,
+                transparent 100%%
+            );
+            background-size: 200%% 100%%;
+            animation: brand-shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes brand-shimmer {
+            0%%   { background-position: 200%% 0; }
+            100%% { background-position: -200%% 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .brand-shimmer::after { animation: none; }
+        }
+        /* ---------------------- */
 
         h1 {
-          font-size: 56px;
-          letter-spacing: -1.68px;
-          margin: 32px 0 16px;
+            margin-top: 5px;
+            font-size: clamp(26px, 5vw, 56px);
+            font-weight: 600;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+            max-width: 760px;
         }
 
-        h2 {
-          font-size: 24px;
-          line-height: 118%%;
-          letter-spacing: -0.24px;
-          margin: 0 0 8px;
+        .subtitle {
+            font-size: clamp(15px, 1.6vw, 18px);
+            color: var(--text-muted);
+            max-width: 580px;
+            line-height: 1.55;
+            margin-bottom: 40px;
         }
 
-        p {
-          margin: 8px 0;
-          font-size: 18px;
+        .subtitle strong {
+            color: var(--text);
+            font-weight: 600;
         }
 
-        code {
-          font-family: var(--mono);
-          font-size: 15px;
-          line-height: 135%%;
-          padding: 4px 8px;
-          background: var(--code-bg);
-          border-radius: 4px;
-          color: var(--text-h);
-          display: inline-block;
+        .command-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 12px 20px;
+            font-family: var(--mono);
+            font-size: 14px;
+            margin-bottom: 56px;
+            transition: border-color 0.2s ease;
         }
 
-        #app {
-          width: 1126px;
-          max-width: 100%%;
-          margin: 0 auto;
-          text-align: center;
-          border-inline: 1px solid var(--border);
-          min-height: 100svh;
-          display: flex;
-          flex-direction: column;
-          box-sizing: border-box;
+        .command-box:hover {
+            border-color: #333;
         }
 
-        #center {
-          display: flex;
-          flex-direction: column;
-          gap: 25px;
-          place-content: center;
-          place-items: center;
-          flex-grow: 1;
-          padding: 32px 20px;
+        .command-box .prompt {
+            color: #555;
+            user-select: none;
         }
 
-        .info-container {
-          background: var(--accent-bg);
-          border: transparent;
-          border-radius: 8px;
-          padding: 24px;
-          margin-top: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          min-width: 300px;
+        .command-box .cmd {
+            color: var(--text);
         }
 
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 0;
-          border-bottom: 1px solid var(--border);
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            font-size: 14px;
+            color: var(--text-muted);
         }
 
-        .info-item:last-child {
-          border-bottom: none;
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .info-label {
-          font-weight: 600;
-          color: var(--text-h);
-          text-align: left;
-          flex: 0 0 auto;
+        .meta-label {
+            color: #666;
         }
 
-        .info-value {
-          color: var(--accent);
-          font-family: var(--mono);
-          text-align: right;
-          flex: 1;
-          margin-left: 16px;
+        .meta-value {
+            color: var(--text);
+            font-family: var(--mono);
+            font-weight: 500;
         }
 
-        @media (max-width: 1024px) {
-          h1 {
-            font-size: 36px;
-            margin: 20px 0 12px;
-          }
+        .meta-value.accent {
+            color: var(--accent);
+        }
 
-          #center {
-            padding: 24px 16px;
-          }
+        .divider {
+            width: 1px;
+            height: 14px;
+            background: var(--border);
+        }
 
-          .info-container {
-            min-width: auto;
-            width: 100%%;
-          }
+        @media (max-width: 640px) {
+            body { padding: 48px 20px; }
+            .brand-fade { bottom: -24px; }
+            .brand-shimmer {
+                bottom: -5px;
+                width: 78%%;
+            }
+            h1 { margin-top: 52px; }
+            .command-box {
+                font-size: 12px;
+                padding: 10px 16px;
+                margin-bottom: 40px;
+            }
+            .meta { gap: 12px; font-size: 13px; }
+            .divider { display: none; }
         }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div id="center">
-            <h1>Hi There</h1>
-            
-            <div class="info-container">
-                <div class="info-item">
-                    <span class="info-label">Name:</span>
-                    <span class="info-value">%s</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Version:</span>
-                    <span class="info-value">%s</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Maker:</span>
-                    <span class="info-value">%s</span>
-                </div>
+    <main class="hero">
+
+        <div class="brand-wrap">
+            <svg
+                class="brand-outline"
+                viewBox="0 0 1300 200"
+                preserveAspectRatio="xMidYMid meet"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                focusable="false">
+                <text
+                    x="650"
+                    y="172"
+                    text-anchor="middle"
+                    font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+                    font-weight="900"
+                    font-size="230"
+                    letter-spacing="2"
+                    textLength="1280"
+                    lengthAdjust="spacingAndGlyphs"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linejoin="round"
+                    stroke-linecap="round">GERBANG</text>
+            </svg>
+            <div class="brand-fade" aria-hidden="true"></div>
+            <div class="brand-shimmer" aria-hidden="true"></div>
+        </div>
+
+        <h1>Fastest API Gateway using Gofiber</h1>
+
+        <p class="subtitle">
+            Used by developers who need speed. <strong>Gerbang</strong> is a lightweight
+            API gateway built on <strong>Gofiber</strong> — the fastest HTTP engine for Go.
+        </p>
+
+        <div class="command-box">
+            <span class="prompt">$</span>
+            <span class="cmd">gerbang start</span>
+        </div>
+
+        <div class="meta">
+            <div class="meta-item">
+                <span class="meta-label">Version</span>
+                <span class="meta-value accent">%s</span>
+            </div>
+            <div class="divider"></div>
+            <div class="meta-item">
+                <span class="meta-label">Created by</span>
+                <span class="meta-value">%s</span>
             </div>
         </div>
-    </div>
+    </main>
 </body>
 </html>`, info.Name, info.Version, info.Maker)
 

@@ -47,7 +47,9 @@ If env not work
 ./golangapp/apigateway-9000 & disown
 
 ## For Alpine OS
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o go-gerbang .
+[MACOS] CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o go-gerbang .
+
+[WINDOWS] $env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -ldflags="-s -w" -o go-gerbang .
 
 ## Send File with SCP
 Build one file:
@@ -59,3 +61,8 @@ scp deploy.tar.gz root@202.155.94.33:/home/gerbang/
 Extract file:
 cd ../home/gerbang
 tar -xzf deploy.tar.gz
+
+
+## GIT HELPER
+
+UNDO ALL COMMIT: git reset --soft HEAD~1

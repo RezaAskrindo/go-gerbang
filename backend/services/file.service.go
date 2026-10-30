@@ -347,18 +347,29 @@ func HandleFileUpload(c fiber.Ctx) error {
 		return err
 	}
 
-	files := form.File["files"]
-	rawLocation := form.Value["file-location"][0]
+	files, ok := form.File["files"]
+	if !ok || len(files) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "no files uploaded")
+	}
 
-	cfgValue := form.Value["s3_config"]
-	if len(cfgValue) != 0 {
-		cfg, err := decodeConfig(cfgValue[0])
+	locations, ok := form.Value["file-location"]
+	if !ok || len(locations) == 0 || locations[0] == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "file-location is required")
+	}
+	rawLocation := locations[0]
+
+	var cfgValue string
+	if vals, ok := form.Value["s3_config"]; ok && len(vals) > 0 {
+		cfgValue = vals[0]
+	}
+
+	if cfgValue != "" {
+		cfg, err := decodeConfig(cfgValue)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid config")
 		}
 
-		err = handleS3Upload(cfg.AccessKey, cfg.SecretKey, cfg.Endpoint, cfg.Bucket, cfg.Region, rawLocation, files)
-		if err != nil {
+		if err := handleS3Upload(cfg.AccessKey, cfg.SecretKey, cfg.Endpoint, cfg.Bucket, cfg.Region, rawLocation, files); err != nil {
 			return handlers.InternalServerErrorResponse(c, err)
 		}
 		return handlers.SuccessResponse(c, true, "success upload file to s3 server", nil, nil)

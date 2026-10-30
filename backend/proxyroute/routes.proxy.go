@@ -33,23 +33,27 @@ func MainProxyRoutes(app *fiber.App) {
 
 	go handlers.WatchConfigFile(config.BasePath + config.ConfigPath)
 
+	app.Use(handlers.MaxBodySize(3 * 1024 * 1024))
+
 	RegisterRoutes(app)
 }
 
 // NOTE: FOR LOW VPS
+var ProxyTransport = &http.Transport{
+	MaxConnsPerHost:     250,
+	MaxIdleConnsPerHost: 50,
+	MaxIdleConns:        100,
+	IdleConnTimeout:     50 * time.Second,
+	DisableKeepAlives:   false,
+	DisableCompression:  true,
+}
+
 var ProxyClient = &http.Client{
 	Timeout: 20 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	},
-	Transport: &http.Transport{
-		MaxConnsPerHost:     100,
-		MaxIdleConnsPerHost: 50,
-		MaxIdleConns:        25,
-		IdleConnTimeout:     20 * time.Second,
-		DisableKeepAlives:   false,
-		DisableCompression:  false,
-	},
+	Transport: ProxyTransport,
 }
 
 func RegisterRoutes(app *fiber.App) {

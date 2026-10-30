@@ -1,15 +1,15 @@
 module go-gerbang
 
-go 1.26.3
+go 1.27.1
 
 require (
 	github.com/KimMachineGun/automemlimit v1.0.1
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-playground/validator/v10 v10.30.5
-	github.com/goccy/go-json v0.11.2
-	github.com/gofiber/contrib/v3/circuitbreaker v1.1.7
-	github.com/gofiber/contrib/v3/monitor v1.2.3
+	github.com/goccy/go-json v0.12.0
+	github.com/gofiber/contrib/v3/circuitbreaker v1.1.8
+	github.com/gofiber/contrib/v3/monitor v1.2.4
 	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/gofiber/storage/redis/v3 v3.6.2

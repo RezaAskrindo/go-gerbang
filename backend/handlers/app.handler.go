@@ -445,3 +445,17 @@ func ExecuteScript(scriptPath, workDir string) error {
 	log.Printf("script %s output: %s", scriptPath, output)
 	return nil
 }
+
+func MaxBodySize(max int) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if c.Request().Header.ContentLength() > max {
+			return fiber.ErrRequestEntityTooLarge
+		}
+
+		if len(c.Body()) > max {
+			return fiber.ErrRequestEntityTooLarge
+		}
+
+		return c.Next()
+	}
+}
